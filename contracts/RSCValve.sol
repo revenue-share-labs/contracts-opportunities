@@ -3,62 +3,72 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IFeeFactory.sol";
+import "./interfaces/IRecursiveRSC.sol";
+
+// Throw when if sender is not distributor
+error OnlyDistributorError();
+
+// Throw when sender is not controller
+error OnlyControllerError();
+
+// Throw when transaction fails
+error TransferFailedError();
+
+// Throw when submitted recipient with address(0)
+error NullAddressRecipientError();
+
+// Throw if recipient is already in contract
+error RecipientAlreadyAddedError();
+
+// Throw when arrays are submit without same length
+error InconsistentDataLengthError();
+
+// Throw when sum of percentage is not 100%
+error InvalidPercentageError();
+
+// Throw when distributor address is same as submit one
+error DistributorAlreadyConfiguredError();
+
+// Throw when distributor address is same as submit one
+error ControllerAlreadyConfiguredError();
+
+// Throw when change is triggered for immutable recipients
+error ImmutableRecipientsError();
+
+// Throw when renounce ownership is called
+error RenounceOwnershipForbidden();
+
+//
+error AmountMoreThanBalance();
 
 contract RSCValve is OwnableUpgradeable {
+    using SafeERC20 for IERC20;
+
     mapping(address => bool) public distributors;
     address public controller;
-    bool public immutableController;
-    bool public autoNativeTokenDistribution;
+    bool public isImmutableRecipients;
+    bool public isAutoNativeCurrencyDistribution;
     uint256 public minAutoDistributionAmount;
     uint256 public platformFee;
     IFeeFactory public factory;
 
-    mapping(uint256 => address[]) public recipients;
+    mapping(uint256 => address payable[]) public recipients;
     mapping(uint256 => mapping(address => uint256)) public recipientsPercentage;
 
     event SetRecipients(address payable[] recipients, uint256[] percentages);
     event DistributeToken(address token, uint256 amount);
     event DistributorChanged(address distributor, bool isDistributor);
     event ControllerChanged(address oldController, address newController);
-
-    // Throw when if sender is not distributor
-    error OnlyDistributorError();
-
-    // Throw when sender is not controller
-    error OnlyControllerError();
-
-    // Throw when transaction fails
-    error TransferFailedError();
-
-    // Throw when submitted recipient with address(0)
-    error NullAddressRecipientError();
-
-    // Throw if recipient is already in contract
-    error RecipientAlreadyAddedError();
-
-    // Throw when arrays are submit without same length
-    error InconsistentDataLengthError();
-
-    // Throw when sum of percentage is not 100%
-    error InvalidPercentageError();
-
-    // Throw when RSC doesnt have any ERC20 balance for given token
-    error Erc20ZeroBalanceError();
-
-    // Throw when distributor address is same as submit one
-    error DistributorAlreadyConfiguredError();
-
-    // Throw when distributor address is same as submit one
-    error ControllerAlreadyConfiguredError();
-
-    // Throw when change is triggered for immutable controller
-    error ImmutableControllerError();
-
-    //
-    error AmountMoreThanBalance();
+    event MinAutoDistributionAmountChanged(
+        uint256 oldAmount,
+        uint256 newAmount
+    );
+    event AutoNativeCurrencyDistributionChanged(bool oldValue, bool newValue);
+    event ImmutableRecipients(bool isImmutableRecipients);
 
     /**
      * @dev Checks whether sender is distributor
@@ -84,10 +94,10 @@ contract RSCValve is OwnableUpgradeable {
      * @dev Constructor function, can be called only once
      * @param _owner Owner of the contract
      * @param _controller address which control setting / removing recipients
-     * @param _distributors list of addresses which can distribute ERC20 tokens or native token
-     * @param _immutableController flag indicating whether controller could be changed
-     * @param _autoNativeTokenDistribution flag indicating whether native token will be automatically distributed or manually
-     * @param _minAutoDistributionAmount Minimum native token amount to trigger auto native token distribution
+     * @param _distributors list of addresses which can distribute ERC20 tokens or native currency
+     * @param _isImmutableRecipients flag indicating whether recipients could be changed
+     * @param _isAutoNativeCurrencyDistribution flag indicating whether native currency will be automatically distributed or manually
+     * @param _minAutoDistributionAmount Minimum native currency amount to trigger auto native currency distribution
      * @param _platformFee Percentage defining fee for distribution services
      * @param _factoryAddress Address of the factory used for creating this RSC
      * @param _initialRecipients Initial recipient addresses
@@ -97,8 +107,8 @@ contract RSCValve is OwnableUpgradeable {
         address _owner,
         address _controller,
         address[] memory _distributors,
-        bool _immutableController,
-        bool _autoNativeTokenDistribution,
+        bool _isImmutableRecipients,
+        bool _isAutoNativeCurrencyDistribution,
         uint256 _minAutoDistributionAmount,
         uint256 _platformFee,
         address _factoryAddress,
@@ -114,13 +124,13 @@ contract RSCValve is OwnableUpgradeable {
         }
 
         controller = _controller;
-        immutableController = _immutableController;
-        autoNativeTokenDistribution = _autoNativeTokenDistribution;
+        isAutoNativeCurrencyDistribution = _isAutoNativeCurrencyDistribution;
         minAutoDistributionAmount = _minAutoDistributionAmount;
         factory = IFeeFactory(_factoryAddress);
         platformFee = _platformFee;
 
         _setRecipients(_initialRecipients, _percentages, 0);
+        isImmutableRecipients = _isImmutableRecipients;
         _transferOwnership(_owner);
     }
 
@@ -138,10 +148,10 @@ contract RSCValve is OwnableUpgradeable {
             revert AmountMoreThanBalance();
         }
         if (
-            autoNativeTokenDistribution &&
+            isAutoNativeCurrencyDistribution &&
             contractBalance >= minAutoDistributionAmount
         ) {
-            _redistributeNativeToken(amount, index);
+            _redistributeNativeCurrency(amount, index);
         }
     }
 
@@ -158,7 +168,7 @@ contract RSCValve is OwnableUpgradeable {
      * @notice Internal function to redistribute native token based on percentages assign to the recipients
      * @param _valueToDistribute native token amount to be distributed
      */
-    function _redistributeNativeToken(
+    function _redistributeNativeCurrency(
         uint256 _valueToDistribute,
         uint256 index
     ) internal {
@@ -193,35 +203,14 @@ contract RSCValve is OwnableUpgradeable {
     /**
      * @notice External function to redistribute native token based on percentages assign to the recipients
      */
-    function redistributeNativeToken(
+    function redistributeNativeCurrency(
         uint256 amount,
         uint256 index
     ) external onlyDistributor {
         if (amount > address(this).balance) {
             revert AmountMoreThanBalance();
         }
-        _redistributeNativeToken(amount, index);
-    }
-
-    /**
-     * @notice Internal function to check whether percentages are equal to 100%
-     * @return valid boolean indicating whether sum of percentage == 100% (10000000)
-     */
-    function _percentageIsValid(
-        uint256 index
-    ) internal view returns (bool valid) {
-        uint256 recipientsLength = recipients[index].length;
-        uint256 percentageSum;
-
-        for (uint256 i = 0; i < recipientsLength; ) {
-            address recipient = recipients[index][i];
-            percentageSum += recipientsPercentage[index][recipient];
-            unchecked {
-                i++;
-            }
-        }
-
-        return percentageSum == 10000000;
+        _redistributeNativeCurrency(amount, index);
     }
 
     /**
@@ -271,6 +260,10 @@ contract RSCValve is OwnableUpgradeable {
         uint256[] memory _percentages,
         uint256 index
     ) internal {
+        if (isImmutableRecipients) {
+            revert ImmutableRecipientsError();
+        }
+
         uint256 newRecipientsLength = _newRecipients.length;
 
         if (newRecipientsLength != _percentages.length) {
@@ -279,14 +272,17 @@ contract RSCValve is OwnableUpgradeable {
 
         _removeAll(index);
 
+        uint256 percentageSum;
         for (uint256 i = 0; i < newRecipientsLength; ) {
+            uint256 percentage = _percentages[i];
             _addRecipient(_newRecipients[i], _percentages[i], index);
+            percentageSum += percentage;
             unchecked {
                 i++;
             }
         }
 
-        if (_percentageIsValid(index) == false) {
+        if (percentageSum != 10000000) {
             revert InvalidPercentageError();
         }
 
@@ -307,6 +303,20 @@ contract RSCValve is OwnableUpgradeable {
     }
 
     /**
+     * @notice External function for setting recipients and make recipients immutable
+     * @param _newRecipients Addresses to be added
+     * @param _percentages new percentages for recipients
+     */
+    function setRecipientsExt(
+        address payable[] memory _newRecipients,
+        uint256[] memory _percentages,
+        uint256 index
+    ) public onlyController {
+        _setRecipients(_newRecipients, _percentages, index);
+        _setImmutableRecipients();
+    }
+
+    /**
      * @notice External function to redistribute ERC20 token based on percentages assign to the recipients
      * @param _token Address of the ERC20 token to be distribute
      */
@@ -315,26 +325,29 @@ contract RSCValve is OwnableUpgradeable {
         uint256 amount,
         uint256 index
     ) external onlyDistributor {
-        uint256 recipientsLength = recipients[index].length;
-
         IERC20 erc20Token = IERC20(_token);
         uint256 contractBalance = erc20Token.balanceOf(address(this));
-        if (contractBalance < amount) {
-            revert Erc20ZeroBalanceError();
+
+        uint256 fee = ((contractBalance * platformFee) / 10000000);
+        contractBalance -= fee;
+
+        if (contractBalance < 10000000) {
+            // because of percentage
+            return;
         }
 
-        if (platformFee > 0) {
-            uint256 fee = (amount / 10000000) * platformFee;
-            amount -= fee;
-            address payable platformWallet = factory.platformWallet();
-            erc20Token.transfer(platformWallet, fee);
+        address payable platformWallet = factory.platformWallet();
+        if (fee != 0 && platformWallet != address(0)) {
+            erc20Token.safeTransfer(platformWallet, fee);
         }
 
+        uint256 recipientsLength = recipients[index].length;
         for (uint256 i = 0; i < recipientsLength; ) {
-            address payable recipient = payable(recipients[index][i]);
+            address payable recipient = recipients[index][i];
             uint256 percentage = recipientsPercentage[index][recipient];
             uint256 amountToReceive = (amount / 10000000) * percentage;
-            erc20Token.transfer(recipient, amountToReceive);
+            erc20Token.safeTransfer(recipient, amountToReceive);
+            _recursiveERC20Distribution(recipient, _token);
             unchecked {
                 i++;
             }
@@ -356,14 +369,138 @@ contract RSCValve is OwnableUpgradeable {
     }
 
     /**
-     * @notice External function to set controller address, if set to address(0), unable to change it
+     * @notice External function to set controller address
      * @param _controller address of new controller
      */
     function setController(address _controller) external onlyOwner {
-        if (controller == address(0) || immutableController) {
-            revert ImmutableControllerError();
-        }
         emit ControllerChanged(controller, _controller);
         controller = _controller;
+    }
+
+    /**
+     * @notice Internal function to check whether recipient should be recursively distributed
+     * @param _recipient Address of recipient to recursively distribute
+     * @param _token token to be distributed
+     */
+    function _recursiveERC20Distribution(
+        address _recipient,
+        address _token
+    ) internal {
+        // Handle Recursive token distribution
+        IRecursiveRSC recursiveRecipient = IRecursiveRSC(_recipient);
+
+        // Wallets have size 0 and contracts > 0. This way we can distinguish them.
+        uint256 recipientSize;
+        assembly {
+            recipientSize := extcodesize(_recipient)
+        }
+        if (recipientSize > 0) {
+            // Validate this contract is distributor in child recipient
+            try recursiveRecipient.distributors(address(this)) returns (
+                bool isBranchDistributor
+            ) {
+                if (isBranchDistributor) {
+                    recursiveRecipient.redistributeToken(_token);
+                }
+            } catch {
+                return;
+            } // unable to recursively distribute
+        }
+    }
+
+    /**
+     * @notice Internal function to check whether recipient should be recursively distributed
+     * @param _recipient Address of recipient to recursively distribute
+     */
+    function _recursiveNativeCurrencyDistribution(address _recipient) internal {
+        // Handle Recursive token distribution
+        IRecursiveRSC recursiveRecipient = IRecursiveRSC(_recipient);
+
+        // Wallets have size 0 and contracts > 0. This way we can distinguish them.
+        uint256 recipientSize;
+        assembly {
+            recipientSize := extcodesize(_recipient)
+        }
+        if (recipientSize > 0) {
+            // Check whether child recipient have autoNativeCurrencyDistribution set to true,
+            // if yes tokens will be recursively distributed automatically
+            try recursiveRecipient.isAutoNativeCurrencyDistribution() returns (
+                bool childAutoNativeCurrencyDistribution
+            ) {
+                if (childAutoNativeCurrencyDistribution == true) {
+                    return;
+                }
+            } catch {
+                return;
+            }
+
+            // Validate this contract is distributor in child recipient
+            try recursiveRecipient.distributors(address(this)) returns (
+                bool isBranchDistributor
+            ) {
+                if (isBranchDistributor) {
+                    recursiveRecipient.redistributeNativeCurrency();
+                }
+            } catch {
+                return;
+            } // unable to recursively distribute
+        }
+    }
+
+    /**
+     * @notice Internal function for setting immutable recipients to true
+     */
+    function _setImmutableRecipients() internal {
+        emit ImmutableRecipients(true);
+        isImmutableRecipients = true;
+    }
+
+    /**
+     * @notice external function for setting immutable recipients to true
+     */
+    function setImmutableRecipients() external onlyOwner {
+        if (isImmutableRecipients) {
+            revert ImmutableRecipientsError();
+        }
+
+        _setImmutableRecipients();
+    }
+
+    /**
+     * @notice external function for setting auto native currency distribution
+     * @param _isAutoNativeCurrencyDistribution Bool switching whether auto native currency distribution is enabled
+     */
+    function setAutoNativeCurrencyDistribution(
+        bool _isAutoNativeCurrencyDistribution
+    ) external onlyOwner {
+        emit AutoNativeCurrencyDistributionChanged(
+            isAutoNativeCurrencyDistribution,
+            _isAutoNativeCurrencyDistribution
+        );
+        isAutoNativeCurrencyDistribution = _isAutoNativeCurrencyDistribution;
+    }
+
+    /**
+     * @notice external function for setting auto native currency distribution
+     * @param _minAutoDistributionAmount New minimum distribution amount
+     */
+    function setMinAutoDistributionAmount(
+        uint256 _minAutoDistributionAmount
+    ) external onlyOwner {
+        emit MinAutoDistributionAmountChanged(
+            minAutoDistributionAmount,
+            _minAutoDistributionAmount
+        );
+        minAutoDistributionAmount = _minAutoDistributionAmount;
+    }
+
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will is forbidden for RSC contract
+     */
+    function renounceOwnership() public view override onlyOwner {
+        revert RenounceOwnershipForbidden();
     }
 }
