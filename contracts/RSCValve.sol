@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IFeeFactory.sol";
 
-contract XLARSCValve is OwnableUpgradeable {
+contract RSCValve is OwnableUpgradeable {
     mapping(address => bool) public distributors;
     address public controller;
     bool public immutableController;
@@ -18,8 +18,8 @@ contract XLARSCValve is OwnableUpgradeable {
 
     mapping(uint256 => address[]) public recipients;
     mapping(uint256 => mapping(address => uint256)) public recipientsPercentage;
-    
-    event SetRecipients(address payable [] recipients, uint256[] percentages);
+
+    event SetRecipients(address payable[] recipients, uint256[] percentages);
     event DistributeToken(address token, uint256 amount);
     event DistributorChanged(address distributor, bool isDistributor);
     event ControllerChanged(address oldController, address newController);
@@ -60,11 +60,10 @@ contract XLARSCValve is OwnableUpgradeable {
     //
     error AmountMoreThanBalance();
 
-
     /**
      * @dev Checks whether sender is distributor
      */
-    modifier onlyDistributor {
+    modifier onlyDistributor() {
         if (distributors[msg.sender] == false) {
             revert OnlyDistributorError();
         }
@@ -74,14 +73,14 @@ contract XLARSCValve is OwnableUpgradeable {
     /**
      * @dev Checks whether sender is controller
      */
-    modifier onlyController {
+    modifier onlyController() {
         if (msg.sender != controller) {
             revert OnlyControllerError();
         }
         _;
     }
 
-     /**
+    /**
      * @dev Constructor function, can be called only once
      * @param _owner Owner of the contract
      * @param _controller address which control setting / removing recipients
@@ -103,14 +102,15 @@ contract XLARSCValve is OwnableUpgradeable {
         uint256 _minAutoDistributionAmount,
         uint256 _platformFee,
         address _factoryAddress,
-        address payable [] memory _initialRecipients,
+        address payable[] memory _initialRecipients,
         uint256[] memory _percentages
     ) public initializer {
-
         uint256 distributorsLength = _distributors.length;
-        for (uint256 i = 0; i < distributorsLength;) {
+        for (uint256 i = 0; i < distributorsLength; ) {
             distributors[_distributors[i]] = true;
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
 
         controller = _controller;
@@ -128,13 +128,19 @@ contract XLARSCValve is OwnableUpgradeable {
         // Check whether automatic native token distribution is enabled
         // and that contractBalance is more than automatic distribution trash hold
 
-        (uint256 index, uint256 amount) = abi.decode(msg.data, (uint256, uint256));
+        (uint256 index, uint256 amount) = abi.decode(
+            msg.data,
+            (uint256, uint256)
+        );
 
         uint256 contractBalance = address(this).balance;
         if (amount >= contractBalance) {
             revert AmountMoreThanBalance();
         }
-        if (autoNativeTokenDistribution && contractBalance >= minAutoDistributionAmount) {
+        if (
+            autoNativeTokenDistribution &&
+            contractBalance >= minAutoDistributionAmount
+        ) {
             _redistributeNativeToken(amount, index);
         }
     }
@@ -144,7 +150,7 @@ contract XLARSCValve is OwnableUpgradeable {
     /**
      * @notice External function to return number of recipients
      */
-    function numberOfRecipients(uint256 index) external view returns(uint256) {
+    function numberOfRecipients(uint256 index) external view returns (uint256) {
         return recipients[index].length;
     }
 
@@ -152,53 +158,67 @@ contract XLARSCValve is OwnableUpgradeable {
      * @notice Internal function to redistribute native token based on percentages assign to the recipients
      * @param _valueToDistribute native token amount to be distributed
      */
-    function _redistributeNativeToken(uint256 _valueToDistribute, uint256 index) internal {
+    function _redistributeNativeToken(
+        uint256 _valueToDistribute,
+        uint256 index
+    ) internal {
         if (platformFee > 0) {
-            uint256 fee = _valueToDistribute / 10000000 * platformFee;
+            uint256 fee = (_valueToDistribute / 10000000) * platformFee;
             _valueToDistribute -= fee;
             address payable platformWallet = factory.platformWallet();
-            (bool success,) = platformWallet.call{value: fee}("");
+            (bool success, ) = platformWallet.call{ value: fee }("");
             if (success == false) {
                 revert TransferFailedError();
             }
         }
 
         uint256 recipientsLength = recipients[index].length;
-        for (uint256 i = 0; i < recipientsLength;) {
+        for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = payable(recipients[index][i]);
             uint256 percentage = recipientsPercentage[index][recipient];
-            uint256 amountToReceive = _valueToDistribute / 10000000 * percentage;
-            (bool success,) = payable(recipient).call{value: amountToReceive}("");
+            uint256 amountToReceive = (_valueToDistribute / 10000000) *
+                percentage;
+            (bool success, ) = payable(recipient).call{
+                value: amountToReceive
+            }("");
             if (success == false) {
                 revert TransferFailedError();
             }
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
     }
 
     /**
      * @notice External function to redistribute native token based on percentages assign to the recipients
      */
-    function redistributeNativeToken(uint256 amount, uint256 index) external onlyDistributor {
-        if(amount > address(this).balance) {
+    function redistributeNativeToken(
+        uint256 amount,
+        uint256 index
+    ) external onlyDistributor {
+        if (amount > address(this).balance) {
             revert AmountMoreThanBalance();
         }
         _redistributeNativeToken(amount, index);
     }
 
-
     /**
      * @notice Internal function to check whether percentages are equal to 100%
      * @return valid boolean indicating whether sum of percentage == 100% (10000000)
      */
-    function _percentageIsValid(uint256 index) internal view returns (bool valid){
+    function _percentageIsValid(
+        uint256 index
+    ) internal view returns (bool valid) {
         uint256 recipientsLength = recipients[index].length;
         uint256 percentageSum;
 
-        for (uint256 i = 0; i < recipientsLength;) {
+        for (uint256 i = 0; i < recipientsLength; ) {
             address recipient = recipients[index][i];
             percentageSum += recipientsPercentage[index][recipient];
-            unchecked {i++;}
+            unchecked {
+                i++;
+            }
         }
 
         return percentageSum == 10000000;
@@ -209,7 +229,11 @@ contract XLARSCValve is OwnableUpgradeable {
      * @param _recipient Fixed amount of token user want to buy
      * @param _percentage code of the affiliation partner
      */
-    function _addRecipient(address payable _recipient, uint256 _percentage, uint256 index) internal {
+    function _addRecipient(
+        address payable _recipient,
+        uint256 _percentage,
+        uint256 index
+    ) internal {
         if (_recipient == address(0)) {
             revert NullAddressRecipientError();
         }
@@ -227,10 +251,12 @@ contract XLARSCValve is OwnableUpgradeable {
             return;
         }
 
-        for (uint256 i = 0; i < recipientsLength;) {
+        for (uint256 i = 0; i < recipientsLength; ) {
             address recipient = recipients[index][i];
             recipientsPercentage[index][recipient] = 0;
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
         delete recipients[index];
     }
@@ -241,7 +267,7 @@ contract XLARSCValve is OwnableUpgradeable {
      * @param _percentages new percentages for recipients
      */
     function _setRecipients(
-        address payable [] memory _newRecipients,
+        address payable[] memory _newRecipients,
         uint256[] memory _percentages,
         uint256 index
     ) internal {
@@ -253,9 +279,11 @@ contract XLARSCValve is OwnableUpgradeable {
 
         _removeAll(index);
 
-        for (uint256 i = 0; i < newRecipientsLength;) {
+        for (uint256 i = 0; i < newRecipientsLength; ) {
             _addRecipient(_newRecipients[i], _percentages[i], index);
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
 
         if (_percentageIsValid(index) == false) {
@@ -271,20 +299,22 @@ contract XLARSCValve is OwnableUpgradeable {
      * @param _percentages new percentages for recipients
      */
     function setRecipients(
-        address payable [] memory _newRecipients,
+        address payable[] memory _newRecipients,
         uint256[] memory _percentages,
         uint256 index
     ) public onlyController {
         _setRecipients(_newRecipients, _percentages, index);
     }
 
-
     /**
      * @notice External function to redistribute ERC20 token based on percentages assign to the recipients
      * @param _token Address of the ERC20 token to be distribute
      */
-    function redistributeToken(address _token, uint256 amount, uint256 index) external onlyDistributor {
-
+    function redistributeToken(
+        address _token,
+        uint256 amount,
+        uint256 index
+    ) external onlyDistributor {
         uint256 recipientsLength = recipients[index].length;
 
         IERC20 erc20Token = IERC20(_token);
@@ -293,19 +323,21 @@ contract XLARSCValve is OwnableUpgradeable {
             revert Erc20ZeroBalanceError();
         }
 
-         if (platformFee > 0) {
-            uint256 fee = amount / 10000000 * platformFee;
+        if (platformFee > 0) {
+            uint256 fee = (amount / 10000000) * platformFee;
             amount -= fee;
             address payable platformWallet = factory.platformWallet();
-             erc20Token.transfer(platformWallet, fee);
+            erc20Token.transfer(platformWallet, fee);
         }
 
-        for (uint256 i = 0; i < recipientsLength;) {
+        for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = payable(recipients[index][i]);
             uint256 percentage = recipientsPercentage[index][recipient];
-            uint256 amountToReceive = amount / 10000000 * percentage;
+            uint256 amountToReceive = (amount / 10000000) * percentage;
             erc20Token.transfer(recipient, amountToReceive);
-            unchecked{i++;}
+            unchecked {
+                i++;
+            }
         }
         emit DistributeToken(_token, amount);
     }
@@ -315,7 +347,10 @@ contract XLARSCValve is OwnableUpgradeable {
      * @param _distributor address of new distributor
      * @param _isDistributor bool indicating whether address is / isn't distributor
      */
-    function setDistributor(address _distributor, bool _isDistributor) external onlyOwner {
+    function setDistributor(
+        address _distributor,
+        bool _isDistributor
+    ) external onlyOwner {
         emit DistributorChanged(_distributor, _isDistributor);
         distributors[_distributor] = _isDistributor;
     }

@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.4;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
-import "./RSCValve.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./RSCValve.sol";
 
-
-contract XLARSCValveFactory is Ownable {
+contract RSCValveFactory is Ownable {
     address public immutable contractImplementation;
     uint256 constant version = 1;
     uint256 public platformFee;
@@ -22,7 +21,7 @@ contract XLARSCValveFactory is Ownable {
         bool immutableController;
         bool autoNativeTokenDistribution;
         uint256 minAutoDistributeAmount;
-        address payable [] initialRecipients;
+        address payable[] initialRecipients;
         uint256[] percentages;
         bytes32 creationId;
     }
@@ -38,10 +37,7 @@ contract XLARSCValveFactory is Ownable {
         bytes32 creationId
     );
 
-    event PlatformFeeChanged(
-        uint256 oldFee,
-        uint256 newFee
-    );
+    event PlatformFeeChanged(uint256 oldFee, uint256 newFee);
 
     event PlatformWalletChanged(
         address payable oldPlatformWallet,
@@ -54,17 +50,17 @@ contract XLARSCValveFactory is Ownable {
     // Throw when creationId was already created
     error CreationIdAlreadyProcessed();
 
-
     constructor() {
-        contractImplementation = address(new XLARSCValve());
+        contractImplementation = address(new RSCValve());
     }
 
     /**
      * @dev Public function for creating clone proxy pointing to RSC Percentage
      * @param _data Initial data for creating new RSC Valve contract
      */
-    function createRSCValve(RSCCreateData memory _data) external returns(address) {
-
+    function createRSCValve(
+        RSCCreateData memory _data
+    ) external returns (address) {
         // check and register creationId
         bytes32 creationId = _data.creationId;
         if (creationId != bytes32(0)) {
@@ -78,7 +74,7 @@ contract XLARSCValveFactory is Ownable {
 
         address payable clone = payable(Clones.clone(contractImplementation));
 
-        XLARSCValve(clone).initialize(
+        RSCValve(clone).initialize(
             msg.sender,
             _data.controller,
             _data.distributors,
@@ -121,7 +117,9 @@ contract XLARSCValveFactory is Ownable {
      * @dev Only Owner function for setting platform fee
      * @param _platformWallet New native token wallet which will receive fee
      */
-    function setPlatformWallet(address payable _platformWallet) external onlyOwner {
+    function setPlatformWallet(
+        address payable _platformWallet
+    ) external onlyOwner {
         emit PlatformWalletChanged(platformWallet, _platformWallet);
         platformWallet = _platformWallet;
     }
