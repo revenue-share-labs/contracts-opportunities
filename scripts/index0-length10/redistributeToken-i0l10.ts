@@ -1,8 +1,8 @@
-const { ethers } = require("hardhat");
+import { ethers } from "hardhat";
 
 const provider = ethers.provider;
 
-const VALVE_ADDRESS = "0x2138e3cBe3754Da55Be01c257ac02259FceE0e7a";
+const VALVE_ADDRESS = "0xD554246BbD94112be4ea993beB5E3707Bd10BB92";
 const TOKEN = "0xb4C565edde995E771D174Ebb982af525e34eB1f5";
 
 async function redistributeToken() {
@@ -20,7 +20,7 @@ async function redistributeToken() {
     provider.getSigner()
   );
 
-  let temp = await Token.transfer(VALVE_ADDRESS, ethers.utils.parseEther("2"));
+  let temp = await Token.transfer(VALVE_ADDRESS, ethers.utils.parseEther("1"));
 
   temp = await Valve.redistributeToken(TOKEN, ethers.utils.parseEther("1"), 0);
   await temp.wait();

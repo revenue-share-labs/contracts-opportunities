@@ -1,4 +1,4 @@
-const { ethers } = require("hardhat");
+import { ethers } from "hardhat";
 
 const provider = ethers.provider;
 const ADDRESSES = [
@@ -13,25 +13,25 @@ const ADDRESSES = [
   "0x98f8B5F6B47F77B05fA59E23f97CD35fb7b9A865",
   "0x02d696593792391254192dF0310b63bC914bfB32",
 ];
+const FACTORY = "0x3881Eb6837c9337949EdD7c4fB9e1FAEDCe0773d";
+
+const PERCENTAGE = 10000000;
 
 async function main() {
   const deployer = await ethers.getSigner();
 
-  const factory = await ethers.getContractFactory("RSCValveFactory");
-  const Factory = await factory.deploy();
-  await Factory.deployed();
-  console.log(Factory.address);
+  const Factory = await ethers.getContractAt(
+    "RSCValveFactory",
+    FACTORY,
+    provider.getSigner()
+  );
+  console.log("Factory - ", Factory.address);
 
-  let temp = await Factory.setPlatformWallet(deployer.address);
-  await temp.wait();
-  temp = await Factory.setPlatformFee(10000);
-  await temp.wait();
+  let percentage = [];
 
-  // const Factory = await ethers.getContractAt(
-  //     "RSCValveFactory",
-  //     "0x65540D2CD8aF7E58d3CEC09a46d3f06f1dd2D1Ec",
-  //     provider.getSigner()
-  // );
+  for (let i = 0; i < 10; i++) {
+    percentage.push(PERCENTAGE / 10);
+  }
 
   temp = await Factory.createRSCValve([
     deployer.address,
@@ -39,9 +39,9 @@ async function main() {
     true,
     false,
     0,
-    [ADDRESSES[0], ADDRESSES[1]],
-    [6000000, 4000000],
-    "0x0000000000000000000000000000000000000000000000000000000000000001",
+    ADDRESSES,
+    percentage,
+    "0x0000000000000000000000000000000000000000000000000000000000000002",
   ]);
 
   let rc = await temp.wait();
@@ -63,7 +63,7 @@ async function main() {
     encodedData[0].data
   );
   let valveAddress = decodedData[0];
-  console.log(valveAddress);
+  console.log("Valve - ", valveAddress);
 
   console.log("Success!");
 }

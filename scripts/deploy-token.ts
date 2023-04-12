@@ -1,4 +1,4 @@
-const { ethers } = require("hardhat");
+import { ethers } from "hardhat";
 
 async function main() {
   const token = await ethers.getContractFactory("Token");

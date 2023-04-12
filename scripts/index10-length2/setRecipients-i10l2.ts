@@ -1,8 +1,8 @@
-const { ethers } = require("hardhat");
+import { ethers } from "hardhat";
 
 const provider = ethers.provider;
 
-const VALVE_ADDRESS = "0xD554246BbD94112be4ea993beB5E3707Bd10BB92";
+const VALVE_ADDRESS = "0xBA60F6d45507A2CB5A7094C5329A4960E8D3D1F3";
 
 const ADDRESSES = [
   "0x6829c091CfA40698dbB3Da56ea5E13b2c6BA38dc",
@@ -28,12 +28,17 @@ async function setRecipients2() {
   );
   let percentage = [];
 
-  for (let i = 0; i < 10; i++) {
-    percentage.push(PERCENTAGE / 10);
+  for (let i = 0; i < 2; i++) {
+    percentage.push(PERCENTAGE / 2);
   }
-
-  let temp = await Valve.setRecipients(ADDRESSES, percentage, 1);
-  await temp.wait();
+  for (let i = 1; i < 11; i++) {
+    let temp = await Valve.setRecipients(
+      [ADDRESSES[0], ADDRESSES[1]],
+      percentage,
+      i
+    );
+    await temp.wait();
+  }
 
   console.log("Success!");
 }

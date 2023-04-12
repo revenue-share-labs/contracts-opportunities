@@ -1,4 +1,4 @@
-const { ethers } = require("hardhat");
+import { ethers } from "hardhat";
 
 const provider = ethers.provider;
 const ADDRESSES = [
@@ -29,8 +29,8 @@ async function main() {
 
   let percentage = [];
 
-  for (let i = 0; i < 10; i++) {
-    percentage.push(PERCENTAGE / 10);
+  for (let i = 0; i < 2; i++) {
+    percentage.push(PERCENTAGE / 2);
   }
 
   temp = await Factory.createRSCValve([
@@ -39,9 +39,9 @@ async function main() {
     true,
     false,
     0,
-    ADDRESSES,
+    [ADDRESSES[0], ADDRESSES[1]],
     percentage,
-    "0x0000000000000000000000000000000000000000000000000000000000000002",
+    "0x0000000000000000000000000000000000000000000000000000000000000003",
   ]);
 
   let rc = await temp.wait();

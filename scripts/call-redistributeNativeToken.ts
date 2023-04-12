@@ -1,8 +1,8 @@
-const { ethers } = require("hardhat");
+import { ethers } from "hardhat";
 
 const provider = ethers.provider;
 
-const VALVE_ADDRESS = "0xD554246BbD94112be4ea993beB5E3707Bd10BB92";
+const VALVE_ADDRESS = "0x8c07644bA1cBdD48BE0fA4956274cf501033EA8D";
 
 async function redistributeNativeToken() {
   const deployer = await ethers.getSigner();
@@ -23,7 +23,8 @@ async function redistributeNativeToken() {
     ethers.utils.parseEther("0.01"),
     0
   );
-  await temp.wait();
+  let rc = await temp.wait();
+  console.log(rc.hash);
   console.log("Success!");
 }
 
