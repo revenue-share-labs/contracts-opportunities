@@ -202,7 +202,7 @@ describe("RSCValve", function () {
     ).to.be.revertedWithCustomError(rscValve, "OnlyControllerError");
   });
 
-  it("InconsistentDataLengthError", async () => {
+  it("InconsistentDataLengthError()", async () => {
     await expect(
       rscValve.setRecipients(
         [addr1.address, addr3.address],
@@ -218,6 +218,22 @@ describe("RSCValve", function () {
         0
       )
     ).to.be.revertedWithCustomError(rscValve, "InconsistentDataLengthError");
+  });
+
+  it("NullAddressRecipientError()", async () => {
+    await expect(
+      rscValve.setRecipients(
+        [addr1.address, ethers.constants.AddressZero],
+        [5000000, 5000000],
+        0
+      )
+    ).to.be.revertedWithCustomError(rscValve, "NullAddressRecipientError");
+  });
+
+  it("AmountMoreThanBalance()", async () => {
+    await expect(
+      rscValve.redistributeNativeCurrency(ethers.utils.parseEther("50"), 0)
+    ).to.be.revertedWithCustomError(rscValve, "AmountMoreThanBalance");
   });
 
   it("Should set recipients correctly and set immutable recipients", async () => {
@@ -299,41 +315,6 @@ describe("RSCValve", function () {
       )
     ).to.be.revertedWithCustomError(rscValve, "ImmutableRecipientsError");
   });
-
-  // it("Should redistribute ETH correctly via fallback", async () => {
-  //   await rscValve.setRecipients(
-  //     [addr1.address, addr2.address],
-  //     [8000000, 2000000],
-  //     0
-  //   );
-
-  //   const addr1BalanceBefore = (
-  //     await ethers.provider.getBalance(addr1.address)
-  //   ).toBigInt();
-  //   const addr2BalanceBefore = (
-  //     await ethers.provider.getBalance(addr2.address)
-  //   ).toBigInt();
-
-  //   await owner.sendTransaction({
-  //     to: rscValve.address,
-  //     data: "0x1234",
-  //     value: ethers.utils.parseEther("50"),
-  //   });
-
-  //   const addr1BalanceAfter = (
-  //     await ethers.provider.getBalance(addr1.address)
-  //   ).toBigInt();
-  //   const addr2BalanceAfter = (
-  //     await ethers.provider.getBalance(addr2.address)
-  //   ).toBigInt();
-
-  //   expect(addr1BalanceAfter).to.be.equal(
-  //     addr1BalanceBefore + ethers.utils.parseEther("40").toBigInt()
-  //   );
-  //   expect(addr2BalanceAfter).to.be.equal(
-  //     addr2BalanceBefore + ethers.utils.parseEther("10").toBigInt()
-  //   );
-  // });
 
   it("Should redistribute ETH correctly", async () => {
     await rscValve.setRecipients(

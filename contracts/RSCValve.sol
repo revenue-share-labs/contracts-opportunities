@@ -55,7 +55,9 @@ contract RSCValve is OwnableUpgradeable {
     uint256 public platformFee;
     IFeeFactory public factory;
 
+    // txId => recipients[]
     mapping(uint256 => address payable[]) public recipients;
+    // txId => recipientAddress => recipientPercentage
     mapping(uint256 => mapping(address => uint256)) public recipientsPercentage;
 
     event SetRecipients(address payable[] recipients, uint256[] percentages);
@@ -63,10 +65,7 @@ contract RSCValve is OwnableUpgradeable {
     event DistributeNativeCurrency(uint256 amount, uint256 index);
     event DistributorChanged(address distributor, bool isDistributor);
     event ControllerChanged(address oldController, address newController);
-    event MinAutoDistributionAmountChanged(
-        uint256 oldAmount,
-        uint256 newAmount
-    );
+    event MinAutoDistributionAmountChanged(uint256 oldAmount, uint256 newAmount);
     event AutoNativeCurrencyDistributionChanged(bool oldValue, bool newValue);
     event ImmutableRecipients(bool isImmutableRecipients);
 
@@ -135,13 +134,7 @@ contract RSCValve is OwnableUpgradeable {
     }
 
     fallback() external payable {
-        // Check whether automatic native token distribution is enabled
-        // and that contractBalance is more than automatic distribution trash hold
-
-        (uint256 index, uint256 amount) = abi.decode(
-            msg.data,
-            (uint256, uint256)
-        );
+        (uint256 index, uint256 amount) = abi.decode(msg.data, (uint256, uint256));
 
         uint256 contractBalance = address(this).balance;
         if (amount >= contractBalance) {
@@ -160,9 +153,7 @@ contract RSCValve is OwnableUpgradeable {
     /**
      * @notice External function to return number of recipients
      */
-    function numberOfRecipients(
-        uint256 _index
-    ) external view returns (uint256) {
+    function numberOfRecipients(uint256 _index) external view returns (uint256) {
         return recipients[_index].length;
     }
 
@@ -193,10 +184,8 @@ contract RSCValve is OwnableUpgradeable {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = payable(recipients[_index][i]);
             uint256 percentage = recipientsPercentage[_index][recipient];
-            uint256 amountToReceive = _valueToDistribute * percentage / 10000000;
-            (bool success, ) = payable(recipient).call{
-                value: amountToReceive
-            }("");
+            uint256 amountToReceive = (_valueToDistribute * percentage) / 10000000;
+            (bool success, ) = payable(recipient).call{ value: amountToReceive }("");
             if (success == false) {
                 revert TransferFailedError();
             }
@@ -340,7 +329,7 @@ contract RSCValve is OwnableUpgradeable {
         }
 
         address payable platformWallet = factory.platformWallet();
-        uint256 fee = _amount * platformFee / 10000000;
+        uint256 fee = (_amount * platformFee) / 10000000;
         _amount -= fee;
         if (fee != 0 && platformWallet != address(0)) {
             erc20Token.safeTransfer(platformWallet, fee);
@@ -350,7 +339,7 @@ contract RSCValve is OwnableUpgradeable {
         for (uint256 i = 0; i < recipientsLength; ) {
             address payable recipient = recipients[_index][i];
             uint256 percentage = recipientsPercentage[_index][recipient];
-            uint256 amountToReceive = _amount * percentage / 10000000;
+            uint256 amountToReceive = (_amount * percentage) / 10000000;
             erc20Token.safeTransfer(recipient, amountToReceive);
             unchecked {
                 i++;

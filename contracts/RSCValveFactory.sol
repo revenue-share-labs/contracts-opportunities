@@ -94,17 +94,13 @@ contract RSCValveFactory is Ownable {
      * @dev Public function for creating clone proxy pointing to RSC Percentage
      * @param _data Initial data for creating new RSC Valve contract
      */
-    function createRSCValve(
-        RSCValveCreateData memory _data
-    ) external returns (address) {
+    function createRSCValve(RSCValveCreateData memory _data) external returns (address) {
         // check and register creationId
         bytes32 creationId = _data.creationId;
         address payable clone;
         if (creationId != bytes32(0)) {
             bytes32 salt = _getSalt(_data, msg.sender);
-            clone = payable(
-                Clones.cloneDeterministic(contractImplementation, salt)
-            );
+            clone = payable(Clones.cloneDeterministic(contractImplementation, salt));
         } else {
             clone = payable(Clones.clone(contractImplementation));
         }
@@ -152,9 +148,7 @@ contract RSCValveFactory is Ownable {
      * @dev Only Owner function for setting platform fee
      * @param _platformWallet New native currency wallet which will receive fee
      */
-    function setPlatformWallet(
-        address payable _platformWallet
-    ) external onlyOwner {
+    function setPlatformWallet(address payable _platformWallet) external onlyOwner {
         emit PlatformWalletChanged(platformWallet, _platformWallet);
         platformWallet = _platformWallet;
     }
