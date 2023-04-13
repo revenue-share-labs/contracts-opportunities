@@ -235,6 +235,13 @@ describe("RSCValve", function () {
     ).to.be.revertedWithCustomError(rscValve, "AmountMoreThanBalance");
   });
 
+  it("RenounceOwnershipForbidden()", async () => {
+    await expect(rscValve.renounceOwnership()).to.be.revertedWithCustomError(
+      rscValve,
+      "RenounceOwnershipForbidden"
+    );
+  });
+
   it("Should set recipients correctly and set immutable recipients", async () => {
     await expect(
       rscValve
