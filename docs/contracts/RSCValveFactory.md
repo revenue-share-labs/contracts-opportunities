@@ -103,7 +103,7 @@ function predictDeterministicAddress(
 ```
 
 
-external function for creating clone proxy pointing to RSC Percentage
+External function for creating clone proxy pointing to RSC Percentage
 
 
 Parameters:
@@ -129,7 +129,7 @@ function setPlatformFee(uint256 _fee) external;
 ```
 
 
-Only Owner function for setting platform fee
+Owner function for setting platform fee
 
 
 Parameters:
@@ -145,7 +145,7 @@ function setPlatformWallet(address _platformWallet) external;
 ```
 
 
-Only Owner function for setting platform fee
+Owner function for setting platform fee
 
 
 Parameters:

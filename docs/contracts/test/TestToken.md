@@ -16,12 +16,6 @@ event Approval(address indexed owner, address indexed spender, uint256 value);
 
 Emitted when the allowance of a `spender` for an `owner` is set by a call to {approve}. `value` is the new allowance.
 
-### OwnershipTransferred event
-
-```solidity
-event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-```
-
 ### Transfer event
 
 ```solidity
@@ -32,12 +26,6 @@ event Transfer(address indexed from, address indexed to, uint256 value);
 Emitted when `value` tokens are moved from one account (`from`) to another (`to`). Note that `value` may be zero.
 
 ## Functions info
-
-### MAX_SUPPLY (0x32cb6b0c)
-
-```solidity
-function MAX_SUPPLY() external view returns (uint256);
-```
 
 ### allowance (0xdd62ed3e)
 
@@ -100,21 +88,15 @@ function mint(address _to, uint256 _amount) external;
 ```
 
 
-mint of xla tokens
+Mint of tokens
 
 
 Parameters:
 
 | Name    | Type    | Description              |
 | :------ | :------ | :----------------------- |
-| _to     | address | receiver of tokens       |
-| _amount | uint256 | amount of tokens to mint |
-
-### minter (0x07546172)
-
-```solidity
-function minter() external view returns (address);
-```
+| _to     | address | Receiver of tokens       |
+| _amount | uint256 | Amount of tokens to mint |
 
 ### name (0x06fdde03)
 
@@ -124,40 +106,6 @@ function name() external view returns (string);
 
 
 Returns the name of the token.
-
-### owner (0x8da5cb5b)
-
-```solidity
-function owner() external view returns (address);
-```
-
-
-Returns the address of the current owner.
-
-### renounceOwnership (0x715018a6)
-
-```solidity
-function renounceOwnership() external;
-```
-
-
-Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will leave the contract without an owner, thereby removing any functionality that is only available to the owner.
-
-### setMinter (0xfca3b5aa)
-
-```solidity
-function setMinter(address _minter) external;
-```
-
-
-Allow to change minter address for admin
-
-
-Parameters:
-
-| Name    | Type    | Description        |
-| :------ | :------ | :----------------- |
-| _minter | address | new minter address |
 
 ### symbol (0x95d89b41)
 
@@ -194,12 +142,3 @@ function transferFrom(address from, address to, uint256 amount) external returns
 
 
 See {IERC20-transferFrom}. Emits an {Approval} event indicating the updated allowance. This is not required by the EIP. See the note at the beginning of {ERC20}. NOTE: Does not update the allowance if the current allowance is the maximum `uint256`. Requirements: - `from` and `to` cannot be the zero address. - `from` must have a balance of at least `amount`. - the caller must have allowance for ``from``'s tokens of at least `amount`.
-
-### transferOwnership (0xf2fde38b)
-
-```solidity
-function transferOwnership(address newOwner) external;
-```
-
-
-Transfers ownership of the contract to a new account (`newOwner`). Can only be called by the current owner.
