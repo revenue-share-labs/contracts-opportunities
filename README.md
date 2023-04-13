@@ -1,4 +1,4 @@
-# Valve - Opportunities
+# Opportunities smart-contracts
 
 This repository contains a smart contracts that will allocate one-time payment and revenue share payments.
 
@@ -12,7 +12,7 @@ This repository contains a smart contracts that will allocate one-time payment a
 1. The contract can redistribute arbitrary number of tokens between recipients, and it is not possible to have a contract without recipients or with less than 100% shares assigned.
 1. The distribution of native cryptocurrency and ERC-20 tokens can only be done by the one of the distributors. Distributors can be added or removed by the owner. However, native cryptocurrency distribution can be done by anyone if isAutoNativeCurrencyDistribution is true.
 1. The recipients can only be changed by the controller. If controller is zero address, then recipients cannot be changed. In this case we refer to it as immutable recipients, however the contract itself does not have immutability attribute for recipients.
-1. Controller can be changed by the owner of the Valve contract only if (both statements below should pass):
+1. Controller can be changed by the owner of the Opportunities contract only if (both statements below should pass):
    - Controller is NOT zero address
    - isImmutableController is FALSE
 

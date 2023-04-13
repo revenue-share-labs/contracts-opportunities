@@ -4,18 +4,18 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/proxy/Clones.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./RSCValve.sol";
+import "./Opportunities.sol";
 
 // Throw when Fee Percentage is more than 100%
 error InvalidFeePercentage();
 
-contract RSCValveFactory is Ownable {
+contract OpportunitiesFactory is Ownable {
     address payable public immutable contractImplementation;
     bytes32 public constant version = "1.0";
     uint256 public platformFee;
     address payable public platformWallet;
 
-    struct RSCValveCreateData {
+    struct OpportunitiesCreateData {
         address controller;
         address[] distributors;
         bool isImmutableRecipients;
@@ -26,7 +26,7 @@ contract RSCValveFactory is Ownable {
         bytes32 creationId;
     }
 
-    event RSCValveCreated(
+    event OpportunitiesCreated(
         address contractAddress,
         address controller,
         address[] distributors,
@@ -45,16 +45,16 @@ contract RSCValveFactory is Ownable {
     );
 
     constructor() {
-        contractImplementation = payable(new RSCValve());
+        contractImplementation = payable(new Opportunities());
     }
 
     /**
      * @dev Internal function for getting semi-random salt for deterministicClone creation
-     * @param _data RSC Create data used for hashing and getting random salt
-     * @param _deployer Wallet address that want to create new RSC contract
+     * @param _data Opportunities Create data used for hashing and getting random salt
+     * @param _deployer Wallet address that want to create new Opportunities contract
      */
     function _getSalt(
-        RSCValveCreateData memory _data,
+        OpportunitiesCreateData memory _data,
         address _deployer
     ) internal pure returns (bytes32) {
         bytes32 hash = keccak256(
@@ -74,12 +74,12 @@ contract RSCValveFactory is Ownable {
     }
 
     /**
-     * @dev External function for creating clone proxy pointing to RSC Percentage
-     * @param _data RSC Create data used for hashing and getting random salt
-     * @param _deployer Wallet address that want to create new RSC contract
+     * @dev External function for creating clone proxy pointing to Opportunities Percentage
+     * @param _data Opportunities Create data used for hashing and getting random salt
+     * @param _deployer Wallet address that want to create new Opportunities contract
      */
     function predictDeterministicAddress(
-        RSCValveCreateData memory _data,
+        OpportunitiesCreateData memory _data,
         address _deployer
     ) external view returns (address) {
         bytes32 salt = _getSalt(_data, _deployer);
@@ -91,10 +91,12 @@ contract RSCValveFactory is Ownable {
     }
 
     /**
-     * @dev Public function for creating clone proxy pointing to RSC Percentage
-     * @param _data Initial data for creating new RSC Valve contract
+     * @dev Public function for creating clone proxy pointing to Opportunities Percentage
+     * @param _data Initial data for creating new Opportunities contract
      */
-    function createRSCValve(RSCValveCreateData memory _data) external returns (address) {
+    function createOpportunities(
+        OpportunitiesCreateData memory _data
+    ) external returns (address) {
         // check and register creationId
         bytes32 creationId = _data.creationId;
         address payable clone;
@@ -105,7 +107,7 @@ contract RSCValveFactory is Ownable {
             clone = payable(Clones.clone(contractImplementation));
         }
 
-        RSCValve(clone).initialize(
+        Opportunities(clone).initialize(
             msg.sender,
             _data.controller,
             _data.distributors,
@@ -118,7 +120,7 @@ contract RSCValveFactory is Ownable {
             _data.percentages
         );
 
-        emit RSCValveCreated(
+        emit OpportunitiesCreated(
             clone,
             _data.controller,
             _data.distributors,

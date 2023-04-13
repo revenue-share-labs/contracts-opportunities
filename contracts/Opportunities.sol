@@ -44,7 +44,7 @@ error RenounceOwnershipForbidden();
 // Throw when amount to distribute is more than contract balance
 error AmountMoreThanBalance();
 
-contract RSCValve is OwnableUpgradeable {
+contract Opportunities is OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     mapping(address => bool) public distributors;
@@ -98,7 +98,7 @@ contract RSCValve is OwnableUpgradeable {
      * @param _isAutoNativeCurrencyDistribution Flag indicating whether native currency will be automatically distributed or manually
      * @param _minAutoDistributionAmount Minimum native currency amount to trigger auto native currency distribution
      * @param _platformFee Percentage defining fee for distribution services
-     * @param _factoryAddress Address of the factory used for creating this RSC
+     * @param _factoryAddress Address of the factory used for creating this Opportunities contract
      * @param _initialRecipients Initial recipient addresses
      * @param _percentages Initial percentages for recipients
      */
@@ -431,7 +431,7 @@ contract RSCValve is OwnableUpgradeable {
      * @dev Leaves the contract without owner. It will not be possible to call
      * `onlyOwner` functions anymore. Can only be called by the current owner.
      *
-     * NOTE: Renouncing ownership will is forbidden for RSC contract
+     * NOTE: Renouncing ownership will is forbidden for Opportunities contract
      */
     function renounceOwnership() public view override onlyOwner {
         revert RenounceOwnershipForbidden();
