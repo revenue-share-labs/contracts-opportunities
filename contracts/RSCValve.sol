@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./interfaces/IFeeFactory.sol";
-import "./interfaces/IRecursiveRSC.sol";
 
 // Throw when if sender is not distributor
 error OnlyDistributorError();
@@ -42,7 +41,7 @@ error ImmutableRecipientsError();
 // Throw when renounce ownership is called
 error RenounceOwnershipForbidden();
 
-//
+// Throw when amount to distribute is more than contract balance
 error AmountMoreThanBalance();
 
 contract RSCValve is OwnableUpgradeable {
@@ -60,7 +59,8 @@ contract RSCValve is OwnableUpgradeable {
     mapping(uint256 => mapping(address => uint256)) public recipientsPercentage;
 
     event SetRecipients(address payable[] recipients, uint256[] percentages);
-    event DistributeToken(address token, uint256 amount);
+    event DistributeToken(address token, uint256 amount, uint256 index);
+    event DistributeNativeCurrency(uint256 amount, uint256 index);
     event DistributorChanged(address distributor, bool isDistributor);
     event ControllerChanged(address oldController, address newController);
     event MinAutoDistributionAmountChanged(
@@ -160,8 +160,10 @@ contract RSCValve is OwnableUpgradeable {
     /**
      * @notice External function to return number of recipients
      */
-    function numberOfRecipients(uint256 index) external view returns (uint256) {
-        return recipients[index].length;
+    function numberOfRecipients(
+        uint256 _index
+    ) external view returns (uint256) {
+        return recipients[_index].length;
     }
 
     /**
@@ -170,24 +172,28 @@ contract RSCValve is OwnableUpgradeable {
      */
     function _redistributeNativeCurrency(
         uint256 _valueToDistribute,
-        uint256 index
+        uint256 _index
     ) internal {
-        if (platformFee > 0) {
-            uint256 fee = (_valueToDistribute / 10000000) * platformFee;
-            _valueToDistribute -= fee;
-            address payable platformWallet = factory.platformWallet();
+        uint256 fee = ((_valueToDistribute * platformFee) / 10000000);
+        _valueToDistribute -= fee;
+
+        if (_valueToDistribute < 10000000) {
+            return;
+        }
+
+        address payable platformWallet = factory.platformWallet();
+        if (fee != 0 && platformWallet != address(0)) {
             (bool success, ) = platformWallet.call{ value: fee }("");
             if (success == false) {
                 revert TransferFailedError();
             }
         }
 
-        uint256 recipientsLength = recipients[index].length;
+        uint256 recipientsLength = recipients[_index].length;
         for (uint256 i = 0; i < recipientsLength; ) {
-            address payable recipient = payable(recipients[index][i]);
-            uint256 percentage = recipientsPercentage[index][recipient];
-            uint256 amountToReceive = (_valueToDistribute / 10000000) *
-                percentage;
+            address payable recipient = payable(recipients[_index][i]);
+            uint256 percentage = recipientsPercentage[_index][recipient];
+            uint256 amountToReceive = _valueToDistribute * percentage / 10000000;
             (bool success, ) = payable(recipient).call{
                 value: amountToReceive
             }("");
@@ -198,6 +204,7 @@ contract RSCValve is OwnableUpgradeable {
                 i++;
             }
         }
+        emit DistributeNativeCurrency(_valueToDistribute, _index);
     }
 
     /**
@@ -221,13 +228,13 @@ contract RSCValve is OwnableUpgradeable {
     function _addRecipient(
         address payable _recipient,
         uint256 _percentage,
-        uint256 index
+        uint256 _index
     ) internal {
         if (_recipient == address(0)) {
             revert NullAddressRecipientError();
         }
-        recipients[index].push(_recipient);
-        recipientsPercentage[index][_recipient] = _percentage;
+        recipients[_index].push(_recipient);
+        recipientsPercentage[_index][_recipient] = _percentage;
     }
 
     /**
@@ -258,7 +265,7 @@ contract RSCValve is OwnableUpgradeable {
     function _setRecipients(
         address payable[] memory _newRecipients,
         uint256[] memory _percentages,
-        uint256 index
+        uint256 _index
     ) internal {
         if (isImmutableRecipients) {
             revert ImmutableRecipientsError();
@@ -270,12 +277,12 @@ contract RSCValve is OwnableUpgradeable {
             revert InconsistentDataLengthError();
         }
 
-        _removeAll(index);
+        _removeAll(_index);
 
         uint256 percentageSum;
         for (uint256 i = 0; i < newRecipientsLength; ) {
             uint256 percentage = _percentages[i];
-            _addRecipient(_newRecipients[i], _percentages[i], index);
+            _addRecipient(_newRecipients[i], _percentages[i], _index);
             percentageSum += percentage;
             unchecked {
                 i++;
@@ -297,9 +304,9 @@ contract RSCValve is OwnableUpgradeable {
     function setRecipients(
         address payable[] memory _newRecipients,
         uint256[] memory _percentages,
-        uint256 index
+        uint256 _index
     ) public onlyController {
-        _setRecipients(_newRecipients, _percentages, index);
+        _setRecipients(_newRecipients, _percentages, _index);
     }
 
     /**
@@ -310,9 +317,9 @@ contract RSCValve is OwnableUpgradeable {
     function setRecipientsExt(
         address payable[] memory _newRecipients,
         uint256[] memory _percentages,
-        uint256 index
+        uint256 _index
     ) public onlyController {
-        _setRecipients(_newRecipients, _percentages, index);
+        _setRecipients(_newRecipients, _percentages, _index);
         _setImmutableRecipients();
     }
 
@@ -322,37 +329,34 @@ contract RSCValve is OwnableUpgradeable {
      */
     function redistributeToken(
         address _token,
-        uint256 amount,
-        uint256 index
+        uint256 _amount,
+        uint256 _index
     ) external onlyDistributor {
         IERC20 erc20Token = IERC20(_token);
         uint256 contractBalance = erc20Token.balanceOf(address(this));
-
-        uint256 fee = ((contractBalance * platformFee) / 10000000);
-        contractBalance -= fee;
-
         if (contractBalance < 10000000) {
             // because of percentage
             return;
         }
 
         address payable platformWallet = factory.platformWallet();
+        uint256 fee = _amount * platformFee / 10000000;
+        _amount -= fee;
         if (fee != 0 && platformWallet != address(0)) {
             erc20Token.safeTransfer(platformWallet, fee);
         }
 
-        uint256 recipientsLength = recipients[index].length;
+        uint256 recipientsLength = recipients[_index].length;
         for (uint256 i = 0; i < recipientsLength; ) {
-            address payable recipient = recipients[index][i];
-            uint256 percentage = recipientsPercentage[index][recipient];
-            uint256 amountToReceive = (amount / 10000000) * percentage;
+            address payable recipient = recipients[_index][i];
+            uint256 percentage = recipientsPercentage[_index][recipient];
+            uint256 amountToReceive = _amount * percentage / 10000000;
             erc20Token.safeTransfer(recipient, amountToReceive);
-            _recursiveERC20Distribution(recipient, _token);
             unchecked {
                 i++;
             }
         }
-        emit DistributeToken(_token, amount);
+        emit DistributeToken(_token, _amount, _index);
     }
 
     /**
@@ -375,76 +379,6 @@ contract RSCValve is OwnableUpgradeable {
     function setController(address _controller) external onlyOwner {
         emit ControllerChanged(controller, _controller);
         controller = _controller;
-    }
-
-    /**
-     * @notice Internal function to check whether recipient should be recursively distributed
-     * @param _recipient Address of recipient to recursively distribute
-     * @param _token token to be distributed
-     */
-    function _recursiveERC20Distribution(
-        address _recipient,
-        address _token
-    ) internal {
-        // Handle Recursive token distribution
-        IRecursiveRSC recursiveRecipient = IRecursiveRSC(_recipient);
-
-        // Wallets have size 0 and contracts > 0. This way we can distinguish them.
-        uint256 recipientSize;
-        assembly {
-            recipientSize := extcodesize(_recipient)
-        }
-        if (recipientSize > 0) {
-            // Validate this contract is distributor in child recipient
-            try recursiveRecipient.distributors(address(this)) returns (
-                bool isBranchDistributor
-            ) {
-                if (isBranchDistributor) {
-                    recursiveRecipient.redistributeToken(_token);
-                }
-            } catch {
-                return;
-            } // unable to recursively distribute
-        }
-    }
-
-    /**
-     * @notice Internal function to check whether recipient should be recursively distributed
-     * @param _recipient Address of recipient to recursively distribute
-     */
-    function _recursiveNativeCurrencyDistribution(address _recipient) internal {
-        // Handle Recursive token distribution
-        IRecursiveRSC recursiveRecipient = IRecursiveRSC(_recipient);
-
-        // Wallets have size 0 and contracts > 0. This way we can distinguish them.
-        uint256 recipientSize;
-        assembly {
-            recipientSize := extcodesize(_recipient)
-        }
-        if (recipientSize > 0) {
-            // Check whether child recipient have autoNativeCurrencyDistribution set to true,
-            // if yes tokens will be recursively distributed automatically
-            try recursiveRecipient.isAutoNativeCurrencyDistribution() returns (
-                bool childAutoNativeCurrencyDistribution
-            ) {
-                if (childAutoNativeCurrencyDistribution == true) {
-                    return;
-                }
-            } catch {
-                return;
-            }
-
-            // Validate this contract is distributor in child recipient
-            try recursiveRecipient.distributors(address(this)) returns (
-                bool isBranchDistributor
-            ) {
-                if (isBranchDistributor) {
-                    recursiveRecipient.redistributeNativeCurrency();
-                }
-            } catch {
-                return;
-            } // unable to recursively distribute
-        }
     }
 
     /**

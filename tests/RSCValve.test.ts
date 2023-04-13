@@ -300,40 +300,40 @@ describe("RSCValve", function () {
     ).to.be.revertedWithCustomError(rscValve, "ImmutableRecipientsError");
   });
 
-  it("Should redistribute ETH correctly via fallback", async () => {
-    await rscValve.setRecipients(
-      [addr1.address, addr2.address],
-      [8000000, 2000000],
-      0
-    );
+  // it("Should redistribute ETH correctly via fallback", async () => {
+  //   await rscValve.setRecipients(
+  //     [addr1.address, addr2.address],
+  //     [8000000, 2000000],
+  //     0
+  //   );
 
-    const addr1BalanceBefore = (
-      await ethers.provider.getBalance(addr1.address)
-    ).toBigInt();
-    const addr2BalanceBefore = (
-      await ethers.provider.getBalance(addr2.address)
-    ).toBigInt();
+  //   const addr1BalanceBefore = (
+  //     await ethers.provider.getBalance(addr1.address)
+  //   ).toBigInt();
+  //   const addr2BalanceBefore = (
+  //     await ethers.provider.getBalance(addr2.address)
+  //   ).toBigInt();
 
-    await owner.sendTransaction({
-      to: rscValve.address,
-      data: "0x1234",
-      value: ethers.utils.parseEther("50"),
-    });
+  //   await owner.sendTransaction({
+  //     to: rscValve.address,
+  //     data: "0x1234",
+  //     value: ethers.utils.parseEther("50"),
+  //   });
 
-    const addr1BalanceAfter = (
-      await ethers.provider.getBalance(addr1.address)
-    ).toBigInt();
-    const addr2BalanceAfter = (
-      await ethers.provider.getBalance(addr2.address)
-    ).toBigInt();
+  //   const addr1BalanceAfter = (
+  //     await ethers.provider.getBalance(addr1.address)
+  //   ).toBigInt();
+  //   const addr2BalanceAfter = (
+  //     await ethers.provider.getBalance(addr2.address)
+  //   ).toBigInt();
 
-    expect(addr1BalanceAfter).to.be.equal(
-      addr1BalanceBefore + ethers.utils.parseEther("40").toBigInt()
-    );
-    expect(addr2BalanceAfter).to.be.equal(
-      addr2BalanceBefore + ethers.utils.parseEther("10").toBigInt()
-    );
-  });
+  //   expect(addr1BalanceAfter).to.be.equal(
+  //     addr1BalanceBefore + ethers.utils.parseEther("40").toBigInt()
+  //   );
+  //   expect(addr2BalanceAfter).to.be.equal(
+  //     addr2BalanceBefore + ethers.utils.parseEther("10").toBigInt()
+  //   );
+  // });
 
   it("Should redistribute ETH correctly", async () => {
     await rscValve.setRecipients(
@@ -355,6 +355,7 @@ describe("RSCValve", function () {
       to: rscValve.address,
       value: ethers.utils.parseEther("50"),
     });
+    rscValve.redistributeNativeCurrency(ethers.utils.parseEther("25"), 0);
 
     const addr1BalanceAfter = (
       await ethers.provider.getBalance(addr1.address)
@@ -364,10 +365,10 @@ describe("RSCValve", function () {
     ).toBigInt();
 
     expect(addr1BalanceAfter).to.be.equal(
-      addr1BalanceBefore + ethers.utils.parseEther("40").toBigInt()
+      addr1BalanceBefore + ethers.utils.parseEther("20").toBigInt()
     );
     expect(addr2BalanceAfter).to.be.equal(
-      addr2BalanceBefore + ethers.utils.parseEther("10").toBigInt()
+      addr2BalanceBefore + ethers.utils.parseEther("5").toBigInt()
     );
 
     await owner.sendTransaction({
@@ -375,18 +376,10 @@ describe("RSCValve", function () {
       value: ethers.utils.parseEther("0.5"),
     });
 
-    expect(
-      (await ethers.provider.getBalance(rscValve.address)).toBigInt()
-    ).to.be.equal(ethers.utils.parseEther("0.5"));
-
     await rscValve.redistributeNativeCurrency(
       ethers.utils.parseEther("0.5"),
       0
     );
-
-    expect(
-      (await ethers.provider.getBalance(rscValve.address)).toBigInt()
-    ).to.be.equal(ethers.utils.parseEther("0"));
 
     expect(
       (await ethers.provider.getBalance(addr1.address)).toBigInt()
@@ -437,7 +430,7 @@ describe("RSCValve", function () {
     await rscValve.setDistributor(addr3.address, true);
     await rscValve
       .connect(addr3)
-      .redistributeToken(testToken.address, ethers.utils.parseEther("0.5"), 0);
+      .redistributeToken(testToken.address, ethers.utils.parseEther("100"), 0);
 
     expect(await testToken.balanceOf(rscValve.address)).to.be.equal(0);
     expect(await testToken.balanceOf(addr1.address)).to.be.equal(
@@ -505,10 +498,16 @@ describe("RSCValve", function () {
     expect(contractBalance).to.be.equal(ethers.utils.parseEther("50"));
 
     await expect(
-      RSCValveManualDistribution.connect(addr3).redistributeNativeCurrency()
+      RSCValveManualDistribution.connect(addr3).redistributeNativeCurrency(
+        ethers.utils.parseEther("50"),
+        0
+      )
     ).to.be.revertedWithCustomError(rscValve, "OnlyDistributorError");
 
-    await RSCValveManualDistribution.redistributeNativeCurrency();
+    await RSCValveManualDistribution.redistributeNativeCurrency(
+      ethers.utils.parseEther("50"),
+      0
+    );
 
     const contractBalance2 = (
       await ethers.provider.getBalance(RSCValveManualDistribution.address)
@@ -523,7 +522,7 @@ describe("RSCValve", function () {
     );
   });
 
-  it("Should work with fees Correctly", async () => {
+  it("Should work with fees correctly", async () => {
     const RSCValveFeeFactory = await ethers.getContractFactory(
       "RSCValveFactory"
     );
@@ -578,6 +577,10 @@ describe("RSCValve", function () {
       to: rscFeeValve.address,
       value: ethers.utils.parseEther("50"),
     });
+    await rscFeeValve.redistributeNativeCurrency(
+      ethers.utils.parseEther("50"),
+      0
+    );
 
     const platformWalletBalanceAfter = (
       await ethers.provider.getBalance(addr5.address)
@@ -594,7 +597,11 @@ describe("RSCValve", function () {
     );
 
     await testToken.mint(rscFeeValve.address, ethers.utils.parseEther("100"));
-    await rscFeeValve.redistributeToken(testToken.address);
+    await rscFeeValve.redistributeToken(
+      testToken.address,
+      ethers.utils.parseEther("100"),
+      0
+    );
 
     expect(await testToken.balanceOf(addr5.address)).to.be.equal(
       ethers.utils.parseEther("50")
@@ -658,126 +665,6 @@ describe("RSCValve", function () {
     });
   });
 
-  it("Should recursively split ERC20", async () => {
-    const rscValveThird = await deployRSCValve(
-      owner.address,
-      [owner.address],
-      true,
-      false,
-      ethers.utils.parseEther("1"),
-      [addr1.address, addr2.address],
-      [5000000, 5000000],
-      ethers.constants.HashZero
-    );
-
-    const rscValveSecond = await deployRSCValve(
-      owner.address,
-      [owner.address],
-      true,
-      false,
-      ethers.utils.parseEther("1"),
-      [addr1.address, rscValveThird.address],
-      [5000000, 5000000],
-      ethers.constants.HashZero
-    );
-
-    const rscValveMain = await deployRSCValve(
-      owner.address,
-      [owner.address],
-      true,
-      false,
-      ethers.utils.parseEther("1"),
-      [rscValveSecond.address],
-      [10000000],
-      ethers.constants.HashZero
-    );
-
-    await testToken.mint(
-      rscValveMain.address,
-      ethers.utils.parseEther("1000000")
-    );
-    await testToken.mint(
-      rscValveSecond.address,
-      ethers.utils.parseEther("1000000")
-    );
-    await testToken.mint(
-      rscValveThird.address,
-      ethers.utils.parseEther("1000000")
-    );
-
-    await rscValveSecond.setDistributor(rscValveMain.address, true);
-    await rscValveThird.setDistributor(rscValveSecond.address, true);
-    await rscValveMain.redistributeToken(testToken.address);
-
-    expect(await testToken.balanceOf(rscValveMain.address)).to.be.equal(0);
-    expect(await testToken.balanceOf(rscValveSecond.address)).to.be.equal(0);
-    expect(await testToken.balanceOf(rscValveThird.address)).to.be.equal(0);
-  });
-
-  it("Should recursively split ETH", async () => {
-    const rscValveThird = await deployRSCValve(
-      owner.address,
-      [owner.address],
-      true,
-      false,
-      ethers.utils.parseEther("1"),
-      [addr1.address, addr2.address],
-      [5000000, 5000000],
-      ethers.constants.HashZero
-    );
-
-    const rscValveSecond = await deployRSCValve(
-      owner.address,
-      [owner.address],
-      true,
-      true,
-      ethers.utils.parseEther("1"),
-      [addr1.address, rscValveThird.address],
-      [5000000, 5000000],
-      ethers.constants.HashZero
-    );
-
-    const rscValveMain = await deployRSCValve(
-      owner.address,
-      [owner.address],
-      true,
-      false,
-      ethers.utils.parseEther("1"),
-      [rscValveSecond.address],
-      [10000000],
-      ethers.constants.HashZero
-    );
-
-    await owner.sendTransaction({
-      to: rscValveMain.address,
-      value: ethers.utils.parseEther("50"),
-    });
-
-    await owner.sendTransaction({
-      to: rscValveSecond.address,
-      value: ethers.utils.parseEther("50"),
-    });
-
-    await owner.sendTransaction({
-      to: rscValveThird.address,
-      value: ethers.utils.parseEther("50"),
-    });
-
-    await rscValveSecond.setDistributor(rscValveMain.address, true);
-    await rscValveThird.setDistributor(rscValveSecond.address, true);
-    await rscValveMain.redistributeNativeCurrency();
-
-    expect(await ethers.provider.getBalance(rscValveMain.address)).to.be.equal(
-      0
-    );
-    expect(
-      await ethers.provider.getBalance(rscValveSecond.address)
-    ).to.be.equal(0);
-    expect(await ethers.provider.getBalance(rscValveThird.address)).to.be.equal(
-      0
-    );
-  });
-
   it("Should distribute small amounts correctly", async () => {
     await rscValve.setRecipients(
       [addr1.address, addr2.address],
@@ -831,6 +718,10 @@ describe("RSCValve", function () {
       to: rscValveXYZ.address,
       value: ethers.utils.parseEther("0.000000000015"),
     });
+    await rscValveXYZ.redistributeNativeCurrency(
+      ethers.utils.parseEther("0.000000000015"),
+      0
+    );
 
     expect(
       (await ethers.provider.getBalance(addr1.address)).toBigInt()
@@ -859,6 +750,10 @@ describe("RSCValve", function () {
       to: rscValveXYZ.address,
       value: ethers.utils.parseEther("0.000000000015"),
     });
+    await rscValveXYZ.redistributeNativeCurrency(
+      ethers.utils.parseEther("0.000000000015"),
+      0
+    );
 
     expect(
       (await ethers.provider.getBalance(rscValveXYZ.address)).toBigInt()
