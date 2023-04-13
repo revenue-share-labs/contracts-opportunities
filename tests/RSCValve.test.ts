@@ -67,7 +67,6 @@ describe("RSCValve", function () {
     );
     testToken = await new TestToken__factory(owner).deploy();
     await testToken.deployed();
-    await testToken.setMinter(owner.address);
   });
 
   beforeEach(async () => {
