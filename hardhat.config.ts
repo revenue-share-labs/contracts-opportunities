@@ -3,6 +3,7 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
+import "@dlsl/hardhat-markup";
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -31,6 +32,13 @@ const config: HardhatUserConfig = {
     gasPriceApi:
       "https://api.etherscan.io/api?module=proxy&action=eth_gasPrice",
     currency: "USD",
+  },
+  markup: {
+    outdir: "./docs",
+    onlyFiles: [],
+    skipFiles: [],
+    noCompile: false,
+    verbose: false,
   },
 };
 
