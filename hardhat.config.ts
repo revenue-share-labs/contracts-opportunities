@@ -35,7 +35,7 @@ const config: HardhatUserConfig = {
   },
   markup: {
     outdir: "./docs",
-    onlyFiles: [],
+    onlyFiles: ["./contracts"],
     skipFiles: [],
     noCompile: false,
     verbose: false,
