@@ -1,4 +1,4 @@
-# RSCValve
+# Opportunities
 
 ## Contract Description
 
@@ -178,7 +178,7 @@ Parameters:
 | _isAutoNativeCurrencyDistribution | bool      | Flag indicating whether native currency will be automatically distributed or manually |
 | _minAutoDistributionAmount        | uint256   | Minimum native currency amount to trigger auto native currency distribution           |
 | _platformFee                      | uint256   | Percentage defining fee for distribution services                                     |
-| _factoryAddress                   | address   | Address of the factory used for creating this RSC                                     |
+| _factoryAddress                   | address   | Address of the factory used for creating this Opportunities contract                  |
 | _initialRecipients                | address[] | Initial recipient addresses                                                           |
 | _percentages                      | uint256[] | Initial percentages for recipients                                                    |
 
@@ -284,7 +284,7 @@ function renounceOwnership() external view;
 ```
 
 
-Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will is forbidden for RSC contract
+Leaves the contract without owner. It will not be possible to call `onlyOwner` functions anymore. Can only be called by the current owner. NOTE: Renouncing ownership will is forbidden for Opportunities contract
 
 ### setAutoNativeCurrencyDistribution (0x3d39e377)
 

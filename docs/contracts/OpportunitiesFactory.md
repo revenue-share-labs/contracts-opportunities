@@ -1,4 +1,4 @@
-# RSCValveFactory
+# OpportunitiesFactory
 
 ## Contract Description
 
@@ -6,6 +6,21 @@
 License: MIT
 
 ## Events info
+
+### OpportunitiesCreated event
+
+```solidity
+event OpportunitiesCreated(
+	address contractAddress,
+	address controller,
+	address[] distributors,
+	bytes32 version,
+	bool isImmutableRecipients,
+	bool isAutoNativeCurrencyDistribution,
+	uint256 minAutoDistributeAmount,
+	bytes32 creationId
+);
+```
 
 ### OwnershipTransferred event
 
@@ -25,21 +40,6 @@ event PlatformFeeChanged(uint256 oldFee, uint256 newFee);
 event PlatformWalletChanged(address oldPlatformWallet, address newPlatformWallet);
 ```
 
-### RSCValveCreated event
-
-```solidity
-event RSCValveCreated(
-	address contractAddress,
-	address controller,
-	address[] distributors,
-	bytes32 version,
-	bool isImmutableRecipients,
-	bool isAutoNativeCurrencyDistribution,
-	uint256 minAutoDistributeAmount,
-	bytes32 creationId
-);
-```
-
 ## Errors info
 
 ### InvalidFeePercentage error
@@ -56,21 +56,21 @@ error InvalidFeePercentage();
 function contractImplementation() external view returns (address);
 ```
 
-### createRSCValve (0x02afbfe1)
+### createOpportunities (0xc67dc9ba)
 
 ```solidity
-function createRSCValve(tuple _data) external returns (address);
+function createOpportunities(tuple _data) external returns (address);
 ```
 
 
-Public function for creating clone proxy pointing to RSC Percentage
+Public function for creating clone proxy pointing to Opportunities Percentage
 
 
 Parameters:
 
-| Name  | Type  | Description                                      |
-| :---- | :---- | :----------------------------------------------- |
-| _data | tuple | Initial data for creating new RSC Valve contract |
+| Name  | Type  | Description                                          |
+| :---- | :---- | :--------------------------------------------------- |
+| _data | tuple | Initial data for creating new Opportunities contract |
 
 ### owner (0x8da5cb5b)
 
@@ -103,15 +103,15 @@ function predictDeterministicAddress(
 ```
 
 
-External function for creating clone proxy pointing to RSC Percentage
+External function for creating clone proxy pointing to Opportunities Percentage
 
 
 Parameters:
 
-| Name      | Type    | Description                                              |
-| :-------- | :------ | :------------------------------------------------------- |
-| _data     | tuple   | RSC Create data used for hashing and getting random salt |
-| _deployer | address | Wallet address that want to create new RSC contract      |
+| Name      | Type    | Description                                                        |
+| :-------- | :------ | :----------------------------------------------------------------- |
+| _data     | tuple   | Opportunities Create data used for hashing and getting random salt |
+| _deployer | address | Wallet address that want to create new Opportunities contract      |
 
 ### renounceOwnership (0x715018a6)
 

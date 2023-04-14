@@ -20,20 +20,11 @@ error TransferFailedError();
 // Throw when submitted recipient with address(0)
 error NullAddressRecipientError();
 
-// Throw if recipient is already in contract
-error RecipientAlreadyAddedError();
-
 // Throw when arrays are submit without same length
 error InconsistentDataLengthError();
 
 // Throw when sum of percentage is not 100%
 error InvalidPercentageError();
-
-// Throw when distributor address is same as submit one
-error DistributorAlreadyConfiguredError();
-
-// Throw when distributor address is same as submit one
-error ControllerAlreadyConfiguredError();
 
 // Throw when change is triggered for immutable recipients
 error ImmutableRecipientsError();
@@ -43,6 +34,9 @@ error RenounceOwnershipForbidden();
 
 // Throw when amount to distribute is more than contract balance
 error AmountMoreThanBalance();
+
+// Throw when amount to distribute is less than 10000000
+error TooLowBalanceToRedistribute();
 
 contract Opportunities is OwnableUpgradeable {
     using SafeERC20 for IERC20;
@@ -171,7 +165,7 @@ contract Opportunities is OwnableUpgradeable {
         _valueToDistribute -= fee;
 
         if (_valueToDistribute < 10000000) {
-            return;
+            revert TooLowBalanceToRedistribute();
         }
 
         address payable platformWallet = factory.platformWallet();
@@ -334,8 +328,7 @@ contract Opportunities is OwnableUpgradeable {
         IERC20 erc20Token = IERC20(_token);
         uint256 contractBalance = erc20Token.balanceOf(address(this));
         if (contractBalance < 10000000) {
-            // because of percentage
-            return;
+            revert TooLowBalanceToRedistribute();
         }
 
         address payable platformWallet = factory.platformWallet();
