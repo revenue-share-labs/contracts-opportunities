@@ -17,8 +17,8 @@ describe("Opportunities", function () {
     snapId: string,
     testToken: TestToken,
     owner: SignerWithAddress,
-    addr1: SignerWithAddress,
-    addr2: SignerWithAddress,
+    alice: SignerWithAddress,
+    bob: SignerWithAddress,
     addr3: SignerWithAddress,
     addr4: SignerWithAddress,
     addr5: SignerWithAddress;
@@ -55,7 +55,7 @@ describe("Opportunities", function () {
   }
 
   before(async () => {
-    [owner, addr1, addr2, addr3, addr4, addr5] = await ethers.getSigners();
+    [owner, alice, bob, addr3, addr4, addr5] = await ethers.getSigners();
     opportunitiesFactory = await new OpportunitiesFactory__factory(
       owner
     ).deploy();
@@ -65,7 +65,7 @@ describe("Opportunities", function () {
       false,
       true,
       ethers.utils.parseEther("1"),
-      [addr1.address],
+      [alice.address],
       [10000000],
       ethers.constants.HashZero
     );
@@ -89,12 +89,12 @@ describe("Opportunities", function () {
     await opportunities.setAutoNativeCurrencyDistribution(false);
     expect(await opportunities.isAutoNativeCurrencyDistribution()).to.be.false;
     await expect(
-      opportunities.connect(addr1).setAutoNativeCurrencyDistribution(false)
+      opportunities.connect(alice).setAutoNativeCurrencyDistribution(false)
     ).to.be.revertedWith("Ownable: caller is not the owner");
 
     expect(await opportunities.isImmutableRecipients()).to.be.false;
     await expect(
-      opportunities.connect(addr1).setImmutableRecipients()
+      opportunities.connect(alice).setImmutableRecipients()
     ).to.be.revertedWith("Ownable: caller is not the owner");
     await opportunities.setImmutableRecipients();
     expect(await opportunities.isImmutableRecipients()).to.be.true;
@@ -114,7 +114,7 @@ describe("Opportunities", function () {
 
     await expect(
       opportunities
-        .connect(addr1)
+        .connect(alice)
         .setMinAutoDistributionAmount(ethers.utils.parseEther("2"))
     ).to.be.revertedWith("Ownable: caller is not the owner");
   });
@@ -124,23 +124,23 @@ describe("Opportunities", function () {
       opportunities
         .connect(addr3)
         .setRecipients(
-          [addr1.address, addr3.address, addr4.address],
+          [alice.address, addr3.address, addr4.address],
           [2000000, 5000000, 3000000],
           0
         )
     ).to.be.revertedWithCustomError(opportunities, "OnlyControllerError");
 
     await opportunities.setRecipients(
-      [addr1.address, addr3.address, addr4.address],
+      [alice.address, addr3.address, addr4.address],
       [2000000, 5000000, 3000000],
       0
     );
 
-    expect(await opportunities.recipients(0, 0)).to.be.equal(addr1.address);
+    expect(await opportunities.recipients(0, 0)).to.be.equal(alice.address);
     expect(await opportunities.recipients(0, 1)).to.be.equal(addr3.address);
     expect(await opportunities.recipients(0, 2)).to.be.equal(addr4.address);
     expect(
-      await opportunities.recipientsPercentage(0, addr1.address)
+      await opportunities.recipientsPercentage(0, alice.address)
     ).to.be.equal(2000000);
     expect(
       await opportunities.recipientsPercentage(0, addr3.address)
@@ -152,17 +152,17 @@ describe("Opportunities", function () {
 
     await expect(
       opportunities.setRecipients(
-        [addr1.address, addr3.address, addr4.address],
+        [alice.address, addr3.address, addr4.address],
         [2000000, 5000000, 2000000],
         0
       )
     ).to.be.revertedWithCustomError(opportunities, "InvalidPercentageError");
 
-    expect(await opportunities.recipients(0, 0)).to.be.equal(addr1.address);
+    expect(await opportunities.recipients(0, 0)).to.be.equal(alice.address);
     expect(await opportunities.recipients(0, 1)).to.be.equal(addr3.address);
     expect(await opportunities.recipients(0, 2)).to.be.equal(addr4.address);
     expect(
-      await opportunities.recipientsPercentage(0, addr1.address)
+      await opportunities.recipientsPercentage(0, alice.address)
     ).to.be.equal(2000000);
     expect(
       await opportunities.recipientsPercentage(0, addr3.address)
@@ -173,7 +173,7 @@ describe("Opportunities", function () {
     expect(await opportunities.numberOfRecipients(0)).to.be.equal(3);
 
     await opportunities.setRecipients(
-      [addr5.address, addr4.address, addr3.address, addr1.address],
+      [addr5.address, addr4.address, addr3.address, alice.address],
       [2000000, 2000000, 3000000, 3000000],
       0
     );
@@ -181,7 +181,7 @@ describe("Opportunities", function () {
     expect(await opportunities.recipients(0, 0)).to.be.equal(addr5.address);
     expect(await opportunities.recipients(0, 1)).to.be.equal(addr4.address);
     expect(await opportunities.recipients(0, 2)).to.be.equal(addr3.address);
-    expect(await opportunities.recipients(0, 3)).to.be.equal(addr1.address);
+    expect(await opportunities.recipients(0, 3)).to.be.equal(alice.address);
     expect(
       await opportunities.recipientsPercentage(0, addr5.address)
     ).to.be.equal(2000000);
@@ -192,7 +192,7 @@ describe("Opportunities", function () {
       await opportunities.recipientsPercentage(0, addr3.address)
     ).to.be.equal(3000000);
     expect(
-      await opportunities.recipientsPercentage(0, addr1.address)
+      await opportunities.recipientsPercentage(0, alice.address)
     ).to.be.equal(3000000);
     expect(await opportunities.numberOfRecipients(0)).to.be.equal(4);
 
@@ -200,7 +200,7 @@ describe("Opportunities", function () {
 
     await expect(
       opportunities.setRecipients(
-        [addr1.address, addr3.address, addr4.address],
+        [alice.address, addr3.address, addr4.address],
         [2000000, 5000000, 3000000],
         0
       )
@@ -210,7 +210,7 @@ describe("Opportunities", function () {
   it("InconsistentDataLengthError()", async () => {
     await expect(
       opportunities.setRecipients(
-        [addr1.address, addr3.address],
+        [alice.address, addr3.address],
         [2000000, 5000000, 3000000],
         0
       )
@@ -221,7 +221,7 @@ describe("Opportunities", function () {
 
     await expect(
       opportunities.setRecipients(
-        [addr1.address, addr3.address, addr4.address],
+        [alice.address, addr3.address, addr4.address],
         [2000000, 5000000],
         0
       )
@@ -234,7 +234,7 @@ describe("Opportunities", function () {
   it("NullAddressRecipientError()", async () => {
     await expect(
       opportunities.setRecipients(
-        [addr1.address, ethers.constants.AddressZero],
+        [alice.address, ethers.constants.AddressZero],
         [5000000, 5000000],
         0
       )
@@ -256,36 +256,95 @@ describe("Opportunities", function () {
     );
   });
 
+  it("TooLowBalanceToRedistribute()", async () => {
+    await opportunities.setRecipients(
+      [alice.address, bob.address],
+      [2000000, 8000000],
+      0
+    );
+
+    // With tokens
+    const amountToDistribute = ethers.utils.parseEther("0.000000000001");
+    await testToken.mint(opportunities.address, amountToDistribute);
+
+    await expect(
+      opportunities.redistributeToken(
+        testToken.address,
+        ethers.utils.parseEther("0.000000000001"),
+        0
+      )
+    ).to.be.revertedWithCustomError(
+      opportunities,
+      "TooLowBalanceToRedistribute"
+    );
+    expect(await testToken.balanceOf(opportunities.address)).to.be.equal(
+      amountToDistribute
+    );
+    expect(await testToken.balanceOf(alice.address)).to.be.equal(0);
+    expect(await testToken.balanceOf(bob.address)).to.be.equal(0);
+
+    // With ether
+    const aliceBalanceBefore = (
+      await ethers.provider.getBalance(alice.address)
+    ).toBigInt();
+    const bobBalanceBefore = (
+      await ethers.provider.getBalance(bob.address)
+    ).toBigInt();
+
+    await owner.sendTransaction({
+      to: opportunities.address,
+      value: ethers.utils.parseEther("0.000000000001"),
+    });
+    await expect(
+      opportunities.redistributeNativeCurrency(
+        ethers.utils.parseEther("0.000000000001"),
+        0
+      )
+    ).to.be.revertedWithCustomError(
+      opportunities,
+      "TooLowBalanceToRedistribute"
+    );
+
+    const aliceBalanceAfter = (
+      await ethers.provider.getBalance(alice.address)
+    ).toBigInt();
+    const bobBalanceAfter = (
+      await ethers.provider.getBalance(bob.address)
+    ).toBigInt();
+    expect(aliceBalanceAfter).to.be.equal(aliceBalanceBefore);
+    expect(bobBalanceAfter).to.be.equal(bobBalanceBefore);
+  });
+
   it("Should set recipients correctly and set immutable recipients", async () => {
     await expect(
       opportunities
         .connect(addr3)
         .setRecipientsExt(
-          [addr1.address, addr3.address, addr4.address],
+          [alice.address, addr3.address, addr4.address],
           [2000000, 5000000, 3000000],
           0
         )
     ).to.be.revertedWithCustomError(opportunities, "OnlyControllerError");
 
     await opportunities.setRecipients(
-      [addr1.address, addr3.address, addr4.address],
+      [alice.address, addr3.address, addr4.address],
       [2000000, 5000000, 3000000],
       0
     );
 
     await expect(
       opportunities.setRecipientsExt(
-        [addr1.address, addr3.address, addr4.address],
+        [alice.address, addr3.address, addr4.address],
         [2000000, 5000000, 2000000],
         0
       )
     ).to.be.revertedWithCustomError(opportunities, "InvalidPercentageError");
 
-    expect(await opportunities.recipients(0, 0)).to.be.equal(addr1.address);
+    expect(await opportunities.recipients(0, 0)).to.be.equal(alice.address);
     expect(await opportunities.recipients(0, 1)).to.be.equal(addr3.address);
     expect(await opportunities.recipients(0, 2)).to.be.equal(addr4.address);
     expect(
-      await opportunities.recipientsPercentage(0, addr1.address)
+      await opportunities.recipientsPercentage(0, alice.address)
     ).to.be.equal(2000000);
     expect(
       await opportunities.recipientsPercentage(0, addr3.address)
@@ -296,7 +355,7 @@ describe("Opportunities", function () {
     expect(await opportunities.numberOfRecipients(0)).to.be.equal(3);
 
     await opportunities.setRecipientsExt(
-      [addr5.address, addr4.address, addr3.address, addr1.address],
+      [addr5.address, addr4.address, addr3.address, alice.address],
       [2000000, 2000000, 3000000, 3000000],
       0
     );
@@ -304,7 +363,7 @@ describe("Opportunities", function () {
     expect(await opportunities.recipients(0, 0)).to.be.equal(addr5.address);
     expect(await opportunities.recipients(0, 1)).to.be.equal(addr4.address);
     expect(await opportunities.recipients(0, 2)).to.be.equal(addr3.address);
-    expect(await opportunities.recipients(0, 3)).to.be.equal(addr1.address);
+    expect(await opportunities.recipients(0, 3)).to.be.equal(alice.address);
     expect(
       await opportunities.recipientsPercentage(0, addr5.address)
     ).to.be.equal(2000000);
@@ -315,13 +374,13 @@ describe("Opportunities", function () {
       await opportunities.recipientsPercentage(0, addr3.address)
     ).to.be.equal(3000000);
     expect(
-      await opportunities.recipientsPercentage(0, addr1.address)
+      await opportunities.recipientsPercentage(0, alice.address)
     ).to.be.equal(3000000);
     expect(await opportunities.numberOfRecipients(0)).to.be.equal(4);
 
     await expect(
       opportunities.setRecipientsExt(
-        [addr1.address, addr3.address, addr4.address],
+        [alice.address, addr3.address, addr4.address],
         [2000000, 5000000, 3000000],
         0
       )
@@ -329,7 +388,7 @@ describe("Opportunities", function () {
 
     await expect(
       opportunities.setRecipients(
-        [addr1.address, addr3.address, addr4.address],
+        [alice.address, addr3.address, addr4.address],
         [2000000, 5000000, 3000000],
         0
       )
@@ -338,18 +397,18 @@ describe("Opportunities", function () {
 
   it("Should redistribute ETH correctly", async () => {
     await opportunities.setRecipients(
-      [addr1.address, addr2.address],
+      [alice.address, bob.address],
       [8000000, 2000000],
       0
     );
 
     expect(await opportunities.numberOfRecipients(0)).to.be.equal(2);
 
-    const addr1BalanceBefore = (
-      await ethers.provider.getBalance(addr1.address)
+    const aliceBalanceBefore = (
+      await ethers.provider.getBalance(alice.address)
     ).toBigInt();
-    const addr2BalanceBefore = (
-      await ethers.provider.getBalance(addr2.address)
+    const bobBalanceBefore = (
+      await ethers.provider.getBalance(bob.address)
     ).toBigInt();
 
     await owner.sendTransaction({
@@ -358,18 +417,18 @@ describe("Opportunities", function () {
     });
     opportunities.redistributeNativeCurrency(ethers.utils.parseEther("25"), 0);
 
-    const addr1BalanceAfter = (
-      await ethers.provider.getBalance(addr1.address)
+    const aliceBalanceAfter = (
+      await ethers.provider.getBalance(alice.address)
     ).toBigInt();
-    const addr2BalanceAfter = (
-      await ethers.provider.getBalance(addr2.address)
+    const bobBalanceAfter = (
+      await ethers.provider.getBalance(bob.address)
     ).toBigInt();
 
-    expect(addr1BalanceAfter).to.be.equal(
-      addr1BalanceBefore + ethers.utils.parseEther("20").toBigInt()
+    expect(aliceBalanceAfter).to.be.equal(
+      aliceBalanceBefore + ethers.utils.parseEther("20").toBigInt()
     );
-    expect(addr2BalanceAfter).to.be.equal(
-      addr2BalanceBefore + ethers.utils.parseEther("5").toBigInt()
+    expect(bobBalanceAfter).to.be.equal(
+      bobBalanceBefore + ethers.utils.parseEther("5").toBigInt()
     );
 
     await owner.sendTransaction({
@@ -383,22 +442,20 @@ describe("Opportunities", function () {
     );
 
     expect(
-      (await ethers.provider.getBalance(addr1.address)).toBigInt()
+      (await ethers.provider.getBalance(alice.address)).toBigInt()
     ).to.be.equal(
-      addr1BalanceAfter + ethers.utils.parseEther("0.4").toBigInt()
+      aliceBalanceAfter + ethers.utils.parseEther("0.4").toBigInt()
     );
     expect(
-      (await ethers.provider.getBalance(addr2.address)).toBigInt()
-    ).to.be.equal(
-      addr2BalanceAfter + ethers.utils.parseEther("0.1").toBigInt()
-    );
+      (await ethers.provider.getBalance(bob.address)).toBigInt()
+    ).to.be.equal(bobBalanceAfter + ethers.utils.parseEther("0.1").toBigInt());
   });
 
   it("Should redistribute ERC20 token", async () => {
     await testToken.mint(opportunities.address, ethers.utils.parseEther("100"));
 
     await opportunities.setRecipients(
-      [addr1.address, addr2.address],
+      [alice.address, bob.address],
       [2000000, 8000000],
       0
     );
@@ -409,10 +466,10 @@ describe("Opportunities", function () {
       0
     );
     expect(await testToken.balanceOf(opportunities.address)).to.be.equal(0);
-    expect(await testToken.balanceOf(addr1.address)).to.be.equal(
+    expect(await testToken.balanceOf(alice.address)).to.be.equal(
       ethers.utils.parseEther("20")
     );
-    expect(await testToken.balanceOf(addr2.address)).to.be.equal(
+    expect(await testToken.balanceOf(bob.address)).to.be.equal(
       ethers.utils.parseEther("80")
     );
 
@@ -434,10 +491,10 @@ describe("Opportunities", function () {
       .redistributeToken(testToken.address, ethers.utils.parseEther("100"), 0);
 
     expect(await testToken.balanceOf(opportunities.address)).to.be.equal(0);
-    expect(await testToken.balanceOf(addr1.address)).to.be.equal(
+    expect(await testToken.balanceOf(alice.address)).to.be.equal(
       ethers.utils.parseEther("40")
     );
-    expect(await testToken.balanceOf(addr2.address)).to.be.equal(
+    expect(await testToken.balanceOf(bob.address)).to.be.equal(
       ethers.utils.parseEther("160")
     );
 
@@ -452,25 +509,25 @@ describe("Opportunities", function () {
   it("Should initialize only once", async () => {
     await expect(
       opportunities.initialize(
-        addr2.address,
+        bob.address,
         ethers.constants.AddressZero,
         [owner.address],
         false,
         true,
         ethers.utils.parseEther("1"),
         BigInt(0),
-        addr1.address,
-        [addr1.address],
+        alice.address,
+        [alice.address],
         [10000000]
       )
     ).to.be.revertedWith("Initializable: contract is already initialized");
   });
 
   it("Should transfer ownership correctly", async () => {
-    await opportunities.transferOwnership(addr1.address);
-    expect(await opportunities.owner()).to.be.equal(addr1.address);
+    await opportunities.transferOwnership(alice.address);
+    expect(await opportunities.owner()).to.be.equal(alice.address);
     await expect(
-      opportunities.connect(addr2).transferOwnership(addr2.address)
+      opportunities.connect(bob).transferOwnership(bob.address)
     ).to.be.revertedWith("Ownable: caller is not the owner");
   });
 
@@ -481,13 +538,13 @@ describe("Opportunities", function () {
       true,
       false,
       ethers.utils.parseEther("1"),
-      [addr1.address, addr2.address],
+      [alice.address, bob.address],
       [5000000, 5000000],
       ethers.constants.HashZero
     );
 
-    const addr1BalanceBefore = (
-      await ethers.provider.getBalance(addr1.address)
+    const aliceBalanceBefore = (
+      await ethers.provider.getBalance(alice.address)
     ).toBigInt();
 
     await owner.sendTransaction({
@@ -517,11 +574,11 @@ describe("Opportunities", function () {
     ).toBigInt();
     expect(contractBalance2).to.be.equal(0);
 
-    const addr1BalanceAfter = (
-      await ethers.provider.getBalance(addr1.address)
+    const aliceBalanceAfter = (
+      await ethers.provider.getBalance(alice.address)
     ).toBigInt();
-    expect(addr1BalanceAfter).to.be.equal(
-      addr1BalanceBefore + ethers.utils.parseEther("25").toBigInt()
+    expect(aliceBalanceAfter).to.be.equal(
+      aliceBalanceBefore + ethers.utils.parseEther("25").toBigInt()
     );
   });
 
@@ -533,7 +590,7 @@ describe("Opportunities", function () {
     await opportunitiesFeeFactory.deployed();
 
     await expect(
-      opportunitiesFeeFactory.connect(addr1).setPlatformFee(BigInt(1))
+      opportunitiesFeeFactory.connect(alice).setPlatformFee(BigInt(1))
     ).to.be.revertedWith("Ownable: caller is not the owner");
 
     await expect(
@@ -544,7 +601,7 @@ describe("Opportunities", function () {
     );
 
     await expect(
-      opportunitiesFeeFactory.connect(addr1).setPlatformWallet(addr4.address)
+      opportunitiesFeeFactory.connect(alice).setPlatformWallet(addr4.address)
     ).to.be.revertedWith("Ownable: caller is not the owner");
 
     await opportunitiesFeeFactory.setPlatformWallet(addr5.address);
@@ -563,7 +620,7 @@ describe("Opportunities", function () {
       isImmutableRecipients: true,
       isAutoNativeCurrencyDistribution: true,
       minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      initialRecipients: [addr1.address],
+      initialRecipients: [alice.address],
       percentages: [BigInt(10000000)],
       creationId: ethers.constants.HashZero,
     });
@@ -579,8 +636,8 @@ describe("Opportunities", function () {
     const platformWalletBalanceBefore = (
       await ethers.provider.getBalance(addr5.address)
     ).toBigInt();
-    const addr1BalanceBefore = (
-      await ethers.provider.getBalance(addr1.address)
+    const aliceBalanceBefore = (
+      await ethers.provider.getBalance(alice.address)
     ).toBigInt();
 
     await owner.sendTransaction({
@@ -595,15 +652,15 @@ describe("Opportunities", function () {
     const platformWalletBalanceAfter = (
       await ethers.provider.getBalance(addr5.address)
     ).toBigInt();
-    const addr1BalanceAfter = (
-      await ethers.provider.getBalance(addr1.address)
+    const aliceBalanceAfter = (
+      await ethers.provider.getBalance(alice.address)
     ).toBigInt();
 
     expect(platformWalletBalanceAfter).to.be.equal(
       platformWalletBalanceBefore + ethers.utils.parseEther("25").toBigInt()
     );
-    expect(addr1BalanceAfter).to.be.equal(
-      addr1BalanceBefore + ethers.utils.parseEther("25").toBigInt()
+    expect(aliceBalanceAfter).to.be.equal(
+      aliceBalanceBefore + ethers.utils.parseEther("25").toBigInt()
     );
 
     await testToken.mint(
@@ -619,7 +676,7 @@ describe("Opportunities", function () {
     expect(await testToken.balanceOf(addr5.address)).to.be.equal(
       ethers.utils.parseEther("50")
     );
-    expect(await testToken.balanceOf(addr1.address)).to.be.equal(
+    expect(await testToken.balanceOf(alice.address)).to.be.equal(
       ethers.utils.parseEther("50")
     );
   });
@@ -638,7 +695,7 @@ describe("Opportunities", function () {
       isImmutableRecipients: true,
       isAutoNativeCurrencyDistribution: true,
       minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      initialRecipients: [addr1.address],
+      initialRecipients: [alice.address],
       percentages: [BigInt(10000000)],
       creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
     });
@@ -650,7 +707,7 @@ describe("Opportunities", function () {
         isImmutableRecipients: true,
         isAutoNativeCurrencyDistribution: true,
         minAutoDistributeAmount: ethers.utils.parseEther("1"),
-        initialRecipients: [addr1.address],
+        initialRecipients: [alice.address],
         percentages: [BigInt(10000000)],
         creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
       })
@@ -662,7 +719,7 @@ describe("Opportunities", function () {
       isImmutableRecipients: true,
       isAutoNativeCurrencyDistribution: true,
       minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      initialRecipients: [addr1.address, addr2.address],
+      initialRecipients: [alice.address, bob.address],
       percentages: [BigInt(5000000), BigInt(5000000)],
       creationId: ethers.utils.formatBytes32String("test-creation-id-1"),
     });
@@ -673,7 +730,7 @@ describe("Opportunities", function () {
       isImmutableRecipients: true,
       isAutoNativeCurrencyDistribution: true,
       minAutoDistributeAmount: ethers.utils.parseEther("1"),
-      initialRecipients: [addr1.address],
+      initialRecipients: [alice.address],
       percentages: [BigInt(10000000)],
       creationId: ethers.utils.formatBytes32String("test-creation-id-2"),
     });
@@ -681,7 +738,7 @@ describe("Opportunities", function () {
 
   it("Should distribute small amounts correctly", async () => {
     await opportunities.setRecipients(
-      [addr1.address, addr2.address],
+      [alice.address, bob.address],
       [2000000, 8000000],
       0
     );
@@ -693,10 +750,10 @@ describe("Opportunities", function () {
       BigInt(15000000),
       0
     );
-    expect(await testToken.balanceOf(addr1.address)).to.be.equal(
+    expect(await testToken.balanceOf(alice.address)).to.be.equal(
       BigInt(3000000)
     );
-    expect(await testToken.balanceOf(addr2.address)).to.be.equal(
+    expect(await testToken.balanceOf(bob.address)).to.be.equal(
       BigInt(12000000)
     );
     expect(await testToken.balanceOf(opportunities.address)).to.be.equal(
@@ -710,10 +767,10 @@ describe("Opportunities", function () {
       BigInt(15000000),
       0
     );
-    expect(await testToken.balanceOf(addr1.address)).to.be.equal(
+    expect(await testToken.balanceOf(alice.address)).to.be.equal(
       BigInt(6000000)
     );
-    expect(await testToken.balanceOf(addr2.address)).to.be.equal(
+    expect(await testToken.balanceOf(bob.address)).to.be.equal(
       BigInt(24000000)
     );
     expect(await testToken.balanceOf(opportunities.address)).to.be.equal(
@@ -728,48 +785,16 @@ describe("Opportunities", function () {
       true,
       true,
       BigInt(10000000),
-      [addr1.address, addr2.address],
+      [alice.address, bob.address],
       [5000000, 5000000],
       ethers.constants.HashZero
     );
 
-    const addr1BalanceBefore1 = (
-      await ethers.provider.getBalance(addr1.address)
+    const aliceBalanceBefore1 = (
+      await ethers.provider.getBalance(alice.address)
     ).toBigInt();
-    const addr2BalanceBefore1 = (
-      await ethers.provider.getBalance(addr2.address)
-    ).toBigInt();
-
-    await owner.sendTransaction({
-      to: opportunitiesXYZ.address,
-      value: ethers.utils.parseEther("0.000000000015"),
-    });
-    await opportunitiesXYZ.redistributeNativeCurrency(
-      ethers.utils.parseEther("0.000000000015"),
-      0
-    );
-
-    expect(
-      (await ethers.provider.getBalance(addr1.address)).toBigInt()
-    ).to.be.equal(
-      addr1BalanceBefore1 +
-        ethers.utils.parseEther("0.0000000000075").toBigInt()
-    );
-    expect(
-      (await ethers.provider.getBalance(addr2.address)).toBigInt()
-    ).to.be.equal(
-      addr2BalanceBefore1 +
-        ethers.utils.parseEther("0.0000000000075").toBigInt()
-    );
-    expect(
-      (await ethers.provider.getBalance(opportunitiesXYZ.address)).toBigInt()
-    ).to.be.equal(BigInt(0));
-
-    const addr1BalanceBefore2 = (
-      await ethers.provider.getBalance(addr1.address)
-    ).toBigInt();
-    const addr2BalanceBefore2 = (
-      await ethers.provider.getBalance(addr2.address)
+    const bobBalanceBefore1 = (
+      await ethers.provider.getBalance(bob.address)
     ).toBigInt();
 
     await owner.sendTransaction({
@@ -782,20 +807,50 @@ describe("Opportunities", function () {
     );
 
     expect(
+      (await ethers.provider.getBalance(alice.address)).toBigInt()
+    ).to.be.equal(
+      aliceBalanceBefore1 +
+        ethers.utils.parseEther("0.0000000000075").toBigInt()
+    );
+    expect(
+      (await ethers.provider.getBalance(bob.address)).toBigInt()
+    ).to.be.equal(
+      bobBalanceBefore1 + ethers.utils.parseEther("0.0000000000075").toBigInt()
+    );
+    expect(
+      (await ethers.provider.getBalance(opportunitiesXYZ.address)).toBigInt()
+    ).to.be.equal(BigInt(0));
+
+    const aliceBalanceBefore2 = (
+      await ethers.provider.getBalance(alice.address)
+    ).toBigInt();
+    const bobBalanceBefore2 = (
+      await ethers.provider.getBalance(bob.address)
+    ).toBigInt();
+
+    await owner.sendTransaction({
+      to: opportunitiesXYZ.address,
+      value: ethers.utils.parseEther("0.000000000015"),
+    });
+    await opportunitiesXYZ.redistributeNativeCurrency(
+      ethers.utils.parseEther("0.000000000015"),
+      0
+    );
+
+    expect(
       (await ethers.provider.getBalance(opportunitiesXYZ.address)).toBigInt()
     ).to.be.equal(BigInt(0));
     expect(
-      (await ethers.provider.getBalance(addr1.address)).toBigInt()
+      (await ethers.provider.getBalance(alice.address)).toBigInt()
     ).to.be.equal(
-      addr1BalanceBefore2 +
+      aliceBalanceBefore2 +
         ethers.utils.parseEther("0.0000000000075").toBigInt()
     );
 
     expect(
-      (await ethers.provider.getBalance(addr2.address)).toBigInt()
+      (await ethers.provider.getBalance(bob.address)).toBigInt()
     ).to.be.equal(
-      addr2BalanceBefore2 +
-        ethers.utils.parseEther("0.0000000000075").toBigInt()
+      bobBalanceBefore2 + ethers.utils.parseEther("0.0000000000075").toBigInt()
     );
   });
 });
