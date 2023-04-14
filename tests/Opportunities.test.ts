@@ -8,20 +8,23 @@ import {
   OpportunitiesFactory__factory,
   TestToken,
   TestToken__factory,
+  MockReceiver,
+  MockReceiver__factory,
 } from "../typechain-types";
 import { snapshot } from "./utils";
 
 describe("Opportunities", function () {
   let opportunitiesFactory: OpportunitiesFactory,
     opportunities: Opportunities,
-    snapId: string,
+    mockReceiver: MockReceiver,
     testToken: TestToken,
     owner: SignerWithAddress,
     alice: SignerWithAddress,
     bob: SignerWithAddress,
     addr3: SignerWithAddress,
     addr4: SignerWithAddress,
-    addr5: SignerWithAddress;
+    addr5: SignerWithAddress,
+    snapId: string;
 
   async function deployOpportunities(
     controller: any,
@@ -44,12 +47,12 @@ describe("Opportunities", function () {
       creationId,
     });
     const receipt = await tx.wait();
-    const revenueShareContractAddress = receipt.events?.[3].args?.[0];
-    const RevenueShareContract = await ethers.getContractFactory(
+    const opportunitiesContractAddress = receipt.events?.[3].args?.[0];
+    const OpportunitiesContract = await ethers.getContractFactory(
       "Opportunities"
     );
-    const Opportunities = await RevenueShareContract.attach(
-      revenueShareContractAddress
+    const Opportunities = await OpportunitiesContract.attach(
+      opportunitiesContractAddress
     );
     return Opportunities;
   }
@@ -70,7 +73,9 @@ describe("Opportunities", function () {
       ethers.constants.HashZero
     );
     testToken = await new TestToken__factory(owner).deploy();
-    await testToken.deployed();
+    mockReceiver = await new MockReceiver__factory(owner).deploy(
+      opportunities.address
+    );
   });
 
   beforeEach(async () => {
@@ -254,6 +259,59 @@ describe("Opportunities", function () {
       opportunities,
       "RenounceOwnershipForbidden"
     );
+  });
+
+  it("TransferFailedError()", async () => {
+    // With mock contract as recipient
+    await opportunities.setAutoNativeCurrencyDistribution(false);
+    await opportunities.setRecipients(
+      [alice.address, mockReceiver.address],
+      [5000000, 5000000],
+      0
+    );
+    await owner.sendTransaction({
+      to: opportunities.address,
+      value: ethers.utils.parseEther("1"),
+    });
+    await expect(
+      opportunities.redistributeNativeCurrency(ethers.utils.parseEther("1"), 0)
+    ).to.be.revertedWithCustomError(opportunities, "TransferFailedError");
+
+    // With mock contract as platform wallet
+    await opportunitiesFactory.setPlatformFee(2000000);
+    await opportunitiesFactory.setPlatformWallet(mockReceiver.address);
+    expect(await opportunitiesFactory.platformWallet()).to.be.equal(
+      mockReceiver.address
+    );
+    const tx = await opportunitiesFactory.createOpportunities({
+      controller: owner.address,
+      distributors: [owner.address],
+      isImmutableRecipients: true,
+      isAutoNativeCurrencyDistribution: false,
+      minAutoDistributeAmount: ethers.utils.parseEther("1"),
+      initialRecipients: [alice.address, bob.address],
+      percentages: [5000000, 5000000],
+      creationId: ethers.constants.HashZero,
+    });
+    const receipt = await tx.wait();
+    const opportunitiesContractAddress = receipt.events?.[3].args?.[0];
+    const OpportunitiesContract = await ethers.getContractFactory(
+      "Opportunities"
+    );
+    const opportunitiesFee = await OpportunitiesContract.attach(
+      opportunitiesContractAddress
+    );
+    expect(await opportunitiesFee.platformFee()).to.be.equal(2000000);
+    await owner.sendTransaction({
+      to: opportunitiesFee.address,
+      value: ethers.utils.parseEther("50"),
+    });
+    await expect(
+      opportunitiesFee.redistributeNativeCurrency(
+        ethers.utils.parseEther("1"),
+        0
+      )
+    ).to.be.revertedWithCustomError(opportunitiesFee, "TransferFailedError");
   });
 
   it("TooLowBalanceToRedistribute()", async () => {
@@ -451,6 +509,44 @@ describe("Opportunities", function () {
     ).to.be.equal(bobBalanceAfter + ethers.utils.parseEther("0.1").toBigInt());
   });
 
+  it("Should redistribute ETH via fallback", async () => {
+    await opportunities.setRecipients(
+      [alice.address, bob.address],
+      [5000000, 5000000],
+      0
+    );
+
+    const aliceBalanceBefore = (
+      await ethers.provider.getBalance(alice.address)
+    ).toBigInt();
+    const bobBalanceBefore = (
+      await ethers.provider.getBalance(bob.address)
+    ).toBigInt();
+
+    await owner.sendTransaction({
+      to: opportunities.address,
+      value: ethers.utils.parseEther("50"),
+      data: ethers.utils.defaultAbiCoder.encode(
+        ["uint256", "uint256"],
+        [0, ethers.utils.parseEther("40")]
+      ),
+    });
+
+    const aliceBalanceAfter = (
+      await ethers.provider.getBalance(alice.address)
+    ).toBigInt();
+    const bobBalanceAfter = (
+      await ethers.provider.getBalance(bob.address)
+    ).toBigInt();
+
+    expect(aliceBalanceAfter).to.be.equal(
+      aliceBalanceBefore + ethers.utils.parseEther("20").toBigInt()
+    );
+    expect(bobBalanceAfter).to.be.equal(
+      bobBalanceBefore + ethers.utils.parseEther("20").toBigInt()
+    );
+  });
+
   it("Should redistribute ERC20 token", async () => {
     await testToken.mint(opportunities.address, ethers.utils.parseEther("100"));
 
@@ -625,12 +721,12 @@ describe("Opportunities", function () {
       creationId: ethers.constants.HashZero,
     });
     const receipt = await txFee.wait();
-    const revenueShareContractAddress = receipt.events?.[3].args?.[0];
-    const RevenueShareContract = await ethers.getContractFactory(
+    const opportunitiesContractAddress = receipt.events?.[3].args?.[0];
+    const OpportunitiesContract = await ethers.getContractFactory(
       "Opportunities"
     );
-    const opportunitiesFees = await RevenueShareContract.attach(
-      revenueShareContractAddress
+    const opportunitiesFees = await OpportunitiesContract.attach(
+      opportunitiesContractAddress
     );
 
     const platformWalletBalanceBefore = (
